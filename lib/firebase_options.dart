@@ -41,7 +41,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDFG7kad_dmg8n7c4Y-gWh3EAvEHsAxSQQ',
+ 
     appId: '1:1083556222049:web:18f9f7b4d74389d51a0620',
     messagingSenderId: '1083556222049',
     projectId: 'classforge-app',
@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA0nvJ3w5SZSvO_NeKqekT2MSDaLbvdxc8',
+    
     appId: '1:1083556222049:android:2aead0b55a65f7ab1a0620',
     messagingSenderId: '1083556222049',
     projectId: 'classforge-app',
@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBILNxup65_nP8dqjdnDS4wptu-VVYak6I',
+    
     appId: '1:1083556222049:ios:e7dd25a3666f28c11a0620',
     messagingSenderId: '1083556222049',
     projectId: 'classforge-app',
@@ -77,7 +77,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDFG7kad_dmg8n7c4Y-gWh3EAvEHsAxSQQ',
+    
     appId: '1:1083556222049:web:084ddb02444f7cb11a0620',
     messagingSenderId: '1083556222049',
     projectId: 'classforge-app',
