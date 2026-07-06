@@ -68,7 +68,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBILNxup65_nP8dqjdnDS4wptu-VVYak6I',
+    
     appId: '1:1083556222049:ios:e7dd25a3666f28c11a0620',
     messagingSenderId: '1083556222049',
     projectId: 'classforge-app',
