@@ -1,0 +1,137 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isLecturer() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lecturer';
+    }
+
+    // Users - SINGLE DEFINITION
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if isAuthenticated();
+      allow delete: if request.auth.uid == userId; // A user can delete their own account
+      // A user can update their own profile picture, name, or bio.
+      allow update: if request.auth.uid == userId && request.resource.data.keys.hasAny(['profilePicture', 'fullName', 'bio']);
+      // Anyone can update ONLY the streak field.
+      allow update: if request.auth != null && request.resource.data.keys.hasOnly(['streak']);
+
+      // ============================================
+      // AI TUTOR MESSAGES (Subcollection under users)
+      // ============================================
+      match /ai_tutor_messages/{messageId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if false;
+      }
+    }
+
+    // Lecturer Registration Codes
+    match /lecturer_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+        request.resource.data.used == true &&
+        request.resource.data.usedBy == request.auth.uid;
+      allow create, delete: if false;
+    }
+
+    // Valid Student IDs
+    match /valid_student_ids/{studentId} {
+      allow read: if true;
+      allow write: if isLecturer();
+    }
+
+    // Forum Questions
+    match /forum_questions/{questionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+
+      match /answers/{answerId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+      }
+    }
+
+    // Attendance Sessions
+    match /attendance_sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isLecturer();
+    }
+
+    // Attendance Records
+    match /attendance_records/{recordId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Group Chat Messages
+    match /messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
+      allow update: if false;
+    }
+
+    // Typing Indicators
+    match /typing_status/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Message Reactions
+    match /message_reactions/{reactionId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Notices
+    match /notices/{noticeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isLecturer();
+      allow delete: if isAuthenticated() && isLecturer();
+    }
+
+    // Assignments
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Scheduled Classes
+    match /scheduled_classes/{classId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Live Classes
+    match /live_classes/{classId} {
+      allow read, create, update: if isAuthenticated();
+    }
+
+    // Live Class Chat
+    match /live_class_chat/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Live Class Reactions
+    match /live_class_reactions/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Activities
+    match /activities/{activityId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Fallback - Deny by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

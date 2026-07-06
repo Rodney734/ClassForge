@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1083556222049",
+    "project_id": "classforge-app",
+    "storage_bucket": "classforge-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1083556222049:android:2aead0b55a65f7ab1a0620",
+        "android_client_info": {
+          "package_name": "com.example.classforge"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0nvJ3w5SZSvO_NeKqekT2MSDaLbvdxc8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
