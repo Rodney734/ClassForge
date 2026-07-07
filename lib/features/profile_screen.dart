@@ -17,6 +17,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   bool _isUploading = false;
+  bool _isUploadingBackground = false;
   late AnimationController _animationController;
 
   @override
@@ -51,18 +52,18 @@ class _ProfileScreenState extends State<ProfileScreen>
       backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: const NetworkImage(
-              "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              isDarkMode
-                  ? Colors.black.withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.3),
-              BlendMode.darken,
-            ),
-          ),
+          image:
+              user.backgroundImage != null && user.backgroundImage!.isNotEmpty
+              ? DecorationImage(
+                  image: MemoryImage(base64Decode(user.backgroundImage!)),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    (isDarkMode ? Colors.black : Colors.white).withOpacity(0.5),
+                    BlendMode.darken,
+                  ),
+                )
+              : null,
+          color: isDarkMode ? Colors.black : Colors.grey[200],
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -107,6 +108,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     _buildStatsSection(user, isDarkMode),
 
                     const SizedBox(height: 30),
+
+                    // Change Background Button
+                    _buildChangeBackgroundButton(isDarkMode),
 
                     // Account Actions Section
                     _buildAccountActionsSection(auth, isDarkMode),
@@ -441,6 +445,49 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  Widget _buildChangeBackgroundButton(bool isDarkMode) {
+    return GestureDetector(
+      onTap: _isUploadingBackground ? null : _uploadBackgroundImage,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: (isDarkMode ? Colors.white : Colors.black).withOpacity(0.08),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: (isDarkMode ? Colors.white : Colors.black).withOpacity(0.15),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_isUploadingBackground)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00F5FF)),
+                ),
+              )
+            else
+              const Icon(Icons.image_outlined, color: Color(0xFF00F5FF)),
+            const SizedBox(width: 12),
+            Text(
+              _isUploadingBackground
+                  ? "Uploading..."
+                  : "Change Background Image",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAccountActionsSection(AuthService auth, bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -581,6 +628,48 @@ class _ProfileScreenState extends State<ProfileScreen>
         }
       } finally {
         if (mounted) setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  Future<void> _uploadBackgroundImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80, // Higher quality for background
+      maxWidth: 1920, // Larger size for background
+    );
+
+    if (image != null) {
+      setState(() => _isUploadingBackground = true);
+
+      try {
+        final auth = Provider.of<AuthService>(context, listen: false);
+        final imageBytes = await File(image.path).readAsBytes();
+        final base64Image = base64Encode(imageBytes);
+        await auth.updateBackgroundImage(base64Image);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Background image updated successfully!"),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error updating background image: $e"),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isUploadingBackground = false);
       }
     }
   }
