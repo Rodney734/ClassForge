@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   emoji_picker_flutter
   file_selector_linux
   flutter_webrtc
+  livekit_client
   open_file_linux
   printing
   url_launcher_linux

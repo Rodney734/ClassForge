@@ -44,53 +44,20 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: const NetworkImage(
-              "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              isDarkMode
-                  ? Colors.black.withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.3),
-              BlendMode.darken,
-            ),
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDarkMode
-                  ? [
-                      Colors.black.withValues(alpha: 0.75),
-                      Colors.black.withValues(alpha: 0.9),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.85),
-                      Colors.white.withValues(alpha: 0.95),
-                    ],
-            ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                // Glass Morphism AppBar
-                _buildGlassAppBar(isDarkMode, isLecturer),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Glass Morphism AppBar
+            _buildGlassAppBar(isDarkMode, isLecturer),
 
-                // Assignments List
-                Expanded(
-                  child: isLecturer
-                      ? _buildLecturerView(isDarkMode)
-                      : _buildStudentView(isDarkMode),
-                ),
-              ],
+            // Assignments List
+            Expanded(
+              child: isLecturer
+                  ? _buildLecturerView(isDarkMode)
+                  : _buildStudentView(isDarkMode),
             ),
-          ),
+          ],
         ),
       ),
       floatingActionButton: isLecturer

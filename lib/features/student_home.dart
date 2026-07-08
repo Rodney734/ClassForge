@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/location_service.dart';
@@ -55,29 +56,48 @@ class _StudentHomeState extends State<StudentHome> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = widget.isDarkMode;
+    final auth = Provider.of<AuthService>(context);
+    final user = auth.currentUser;
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _currentIndex == 0 && _activeSubPage != null
-            ? _activeSubPage!
-            : _pages[_currentIndex],
+    return Container(
+      decoration: BoxDecoration(
+        image:
+            user?.backgroundImage != null && user!.backgroundImage!.isNotEmpty
+            ? DecorationImage(
+                image: MemoryImage(base64Decode(user.backgroundImage!)),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  (isDarkMode ? Colors.black : Colors.white).withOpacity(0.5),
+                  BlendMode.darken,
+                ),
+              )
+            : null,
+        color: isDarkMode ? Colors.black : Colors.grey[200],
       ),
-      bottomNavigationBar: isKeyboardVisible
-          ? const SizedBox.shrink()
-          : _buildModernBottomNav(isDarkMode),
-      floatingActionButton: isKeyboardVisible
-          ? null
-          : FloatingActionButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LiveClassScreen()),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _currentIndex == 0 && _activeSubPage != null
+              ? _activeSubPage!
+              : _pages[_currentIndex],
+        ),
+        bottomNavigationBar: isKeyboardVisible
+            ? const SizedBox.shrink()
+            : _buildModernBottomNav(isDarkMode),
+        floatingActionButton: isKeyboardVisible
+            ? null
+            : FloatingActionButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LiveClassScreen()),
+                ),
+                backgroundColor: const Color(0xFF00F5FF),
+                child: const Icon(Icons.live_tv, color: Colors.black, size: 30),
               ),
-              backgroundColor: const Color(0xFF00F5FF),
-              child: const Icon(Icons.live_tv, color: Colors.black, size: 30),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      ),
     );
   }
 
@@ -225,199 +245,159 @@ class _StudentDashboardContentState extends State<StudentDashboardContent>
     final isDesktop = screenWidth > 800;
     final isTablet = screenWidth > 600 && screenWidth <= 800;
 
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: const NetworkImage(
-            "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-          ),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            isDarkMode
-                ? Colors.black.withOpacity(0.6)
-                : Colors.white.withOpacity(0.3),
-            BlendMode.darken,
-          ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.only(
+          left: isDesktop ? 40 : (isTablet ? 30 : 20),
+          right: isDesktop ? 40 : (isTablet ? 30 : 20),
+          top: isDesktop ? 40 : (isTablet ? 30 : 20),
+          bottom: 100,
         ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDarkMode
-                ? [
-                    Colors.black.withOpacity(0.7),
-                    Colors.black.withOpacity(0.85),
-                  ]
-                : [
-                    Colors.white.withOpacity(0.85),
-                    Colors.white.withOpacity(0.95),
-                  ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.only(
-              left: isDesktop ? 40 : (isTablet ? 30 : 20),
-              right: isDesktop ? 40 : (isTablet ? 30 : 20),
-              top: isDesktop ? 40 : (isTablet ? 30 : 20),
-              bottom: 100,
-            ),
-            child: FadeTransition(
-              opacity: _animationController,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+        child: FadeTransition(
+          opacity: _animationController,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with greeting
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Header with greeting
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _getGreeting(),
-                            style: TextStyle(
-                              fontSize: isDesktop ? 32 : (isTablet ? 28 : 26),
-                              color: isDarkMode ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Text(
-                            "Let's make today productive",
-                            style: TextStyle(
-                              color: isDarkMode
-                                  ? Colors.white70
-                                  : Colors.black54,
-                              fontSize: isDesktop ? 16 : (isTablet ? 14 : 12),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      // Theme Toggle Switch
-                      Switch(
-                        value: isDarkMode,
-                        onChanged: (value) => widget.toggleTheme(),
-                        activeTrackColor: const Color(
-                          0xFF00F5FF,
-                        ).withOpacity(0.5),
-                        activeColor: const Color(0xFF00F5FF),
-                        inactiveThumbColor: Colors.grey.shade400,
-                        inactiveTrackColor: Colors.grey.shade200,
-                      ),
-                      const SizedBox(width: 12),
-                      GestureDetector(
-                        onTap: () => setState(() {
-                          // This is a placeholder for navigating to profile
-                          // In a real app, you'd call a method to switch tabs
-                        }),
-                        child: CircleAvatar(
-                          radius: isDesktop ? 30 : (isTablet ? 28 : 25),
-                          backgroundColor: const Color(0xFF00D4FF),
-                          child: Text(
-                            user?.fullName[0].toUpperCase() ?? "S",
-                            style: TextStyle(
-                              fontSize: isDesktop ? 22 : (isTablet ? 20 : 18),
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Today's Classes Section
-                  _buildTodayClassesSection(
-                    isDarkMode,
-                    user,
-                    isDesktop,
-                    isTablet,
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Active Attendance Section
-                  _buildActiveAttendanceSection(isDarkMode),
-
-                  const SizedBox(height: 20),
-
-                  // Quick Access Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Quick Access",
+                        _getGreeting(),
                         style: TextStyle(
-                          fontSize: isDesktop ? 22 : (isTablet ? 20 : 18),
-                          fontWeight: FontWeight.bold,
+                          fontSize: isDesktop ? 32 : (isTablet ? 28 : 26),
                           color: isDarkMode ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          "View All",
-                          style: TextStyle(
-                            color: const Color(0xFF00D4FF),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                      Text(
+                        "Let's make today productive",
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                          fontSize: isDesktop ? 16 : (isTablet ? 14 : 12),
                         ),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // Responsive Quick Access Cards
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final cardWidth = constraints.maxWidth;
-                      final crossAxisCount = cardWidth < 500
-                          ? 2
-                          : (cardWidth < 800 ? 3 : 4);
-
-                      return GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.3,
-                        ),
-                        itemCount: 6,
-                        itemBuilder: (context, index) {
-                          final cards = _buildQuickAccessCards(
-                            isDarkMode,
-                            isDesktop,
-                            isTablet,
-                          );
-                          return cards[index];
-                        },
-                      );
-                    },
+                  const Spacer(),
+                  // Theme Toggle Switch
+                  Switch(
+                    value: isDarkMode,
+                    onChanged: (value) => widget.toggleTheme(),
+                    activeTrackColor: const Color(
+                      0xFF00F5FF,
+                    ).withValues(alpha: 0.5),
+                    activeThumbColor: const Color(0xFF00F5FF),
+                    inactiveThumbColor: Colors.grey.shade400,
+                    inactiveTrackColor: Colors.grey.shade200,
                   ),
-
-                  const SizedBox(height: 20),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      // This is a placeholder for navigating to profile
+                      // In a real app, you'd call a method to switch tabs
+                    }),
+                    child: CircleAvatar(
+                      radius: isDesktop ? 30 : (isTablet ? 28 : 25),
+                      backgroundColor: const Color(0xFF00D4FF),
+                      child: Text(
+                        user?.fullName[0].toUpperCase() ?? "S",
+                        style: TextStyle(
+                          fontSize: isDesktop ? 22 : (isTablet ? 20 : 18),
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
+
+              const SizedBox(height: 30),
+
+              // Today's Classes Section
+              _buildTodayClassesSection(isDarkMode, user, isDesktop, isTablet),
+
+              const SizedBox(height: 30),
+
+              // Active Attendance Section
+              _buildActiveAttendanceSection(isDarkMode),
+
+              const SizedBox(height: 20),
+
+              // Quick Access Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Quick Access",
+                    style: TextStyle(
+                      fontSize: isDesktop ? 22 : (isTablet ? 20 : 18),
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      "View All",
+                      style: TextStyle(
+                        color: const Color(0xFF00D4FF),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Responsive Quick Access Cards
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cardWidth = constraints.maxWidth;
+                  final crossAxisCount = cardWidth < 500
+                      ? 2
+                      : (cardWidth < 800 ? 3 : 4);
+
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.3,
+                    ),
+                    itemCount: 6,
+                    itemBuilder: (context, index) {
+                      final cards = _buildQuickAccessCards(
+                        isDarkMode,
+                        isDesktop,
+                        isTablet,
+                      );
+                      return cards[index];
+                    },
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ),

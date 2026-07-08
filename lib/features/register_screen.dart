@@ -117,36 +117,10 @@ class _RegisterScreenState extends State<RegisterScreen>
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: const NetworkImage(
-              "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              isDarkMode
-                  ? Colors.black.withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.3),
-              BlendMode.darken,
-            ),
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDarkMode
-                  ? [
-                      Colors.black.withValues(alpha: 0.75),
-                      Colors.black.withValues(alpha: 0.9),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.85),
-                      Colors.white.withValues(alpha: 0.95),
-                    ],
-            ),
-          ),
+        color: isDarkMode
+            ? const Color.fromARGB(255, 43, 42, 42)
+            : const Color.fromARGB(255, 166, 163, 163),
+        child: SafeArea(
           child: SafeArea(
             child: Center(
               child: SingleChildScrollView(

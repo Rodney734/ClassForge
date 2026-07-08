@@ -76,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen>
               end: Alignment.bottomCenter,
               colors: [
                 const Color.fromARGB(255, 49, 48, 48).withValues(alpha: 0.4),
-                const Color.fromARGB(255, 91, 88, 88).withValues(alpha: 0.8),
+                const Color.fromARGB(255, 146, 142, 142).withValues(alpha: 0.8),
               ],
             ),
           ),

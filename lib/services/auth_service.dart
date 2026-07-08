@@ -173,6 +173,22 @@ class AuthService with ChangeNotifier {
     }
   }
 
+  Future<void> updateBackgroundImage(String base64Image) async {
+    if (_currentUser == null) return;
+    try {
+      // Update the user document in Firestore with the Base64 string
+      await _firestore.updateUserProfile(_currentUser!.uid, {
+        'backgroundImage': base64Image,
+      });
+      // Refresh the local user data
+      _currentUser = await _firestore.getUser(_currentUser!.uid);
+      notifyListeners();
+    } catch (e) {
+      print("❌ Background image upload failed: $e");
+      rethrow;
+    }
+  }
+
   Future<void> updateUserProfile({
     required String fullName,
     required String bio,

@@ -161,101 +161,84 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return DefaultTabController(
       length: tabCount,
       child: Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDarkMode
-                  ? [const Color(0xFF1a1a2e), const Color(0xFF16213e)]
-                  : [
-                      const Color(0xFFFEFFED),
-                      const Color(0xFFF7F9E2), // A slightly darker shaded cream
-                    ],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: EdgeInsets.all(isDesktop ? 30 : 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Discover & Learn",
-                        style: TextStyle(
-                          fontSize: isDesktop ? 36 : 32,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(isDesktop ? 30 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Discover & Learn",
+                      style: TextStyle(
+                        fontSize: isDesktop ? 36 : 32,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black87,
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Level ${user?.level} • ${user?.role.toUpperCase()}",
-                        style: TextStyle(
-                          color: const Color(0xFF00F5FF),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Level ${user?.level} • ${user?.role.toUpperCase()}",
+                      style: TextStyle(
+                        color: const Color(0xFF00F5FF),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
 
-                // Tab Bar
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : Colors.black.withValues(alpha: 0.05),
+              // Tab Bar
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: TabBar(
+                  labelColor: const Color(0xFF00F5FF),
+                  unselectedLabelColor: isDarkMode
+                      ? Colors.white70
+                      : Colors.black54,
+                  indicator: BoxDecoration(
+                    color: const Color(0xFF00F5FF).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  child: TabBar(
-                    labelColor: const Color(0xFF00F5FF),
-                    unselectedLabelColor: isDarkMode
-                        ? Colors.white70
-                        : Colors.black54,
-                    indicator: BoxDecoration(
-                      color: const Color(0xFF00F5FF).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    tabs: [
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  tabs: [
+                    const Tab(text: "AI Quiz", icon: Icon(Icons.auto_awesome)),
+                    if (isStudent)
                       const Tab(
-                        text: "AI Quiz",
-                        icon: Icon(Icons.auto_awesome),
+                        text: "Q&A Forum",
+                        icon: Icon(Icons.question_answer),
                       ),
-                      if (isStudent)
-                        const Tab(
-                          text: "Q&A Forum",
-                          icon: Icon(Icons.question_answer),
-                        ),
-                      const Tab(text: "Help Guide", icon: Icon(Icons.help)),
-                    ],
-                  ),
+                    const Tab(text: "Help Guide", icon: Icon(Icons.help)),
+                  ],
                 ),
+              ),
 
-                // Tab Content
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      // AI Quiz Tab
-                      _buildAIQuizTab(isDarkMode, isDesktop, user),
+              // Tab Content
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // AI Quiz Tab
+                    _buildAIQuizTab(isDarkMode, isDesktop, user),
 
-                      // Q&A Forum Tab
-                      if (isStudent)
-                        _buildQandATab(isDarkMode, isDesktop, user),
+                    // Q&A Forum Tab
+                    if (isStudent) _buildQandATab(isDarkMode, isDesktop, user),
 
-                      // Help Guide Tab
-                      _buildHelpGuideTab(isDarkMode, isDesktop),
-                    ],
-                  ),
+                    // Help Guide Tab
+                    _buildHelpGuideTab(isDarkMode, isDesktop),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

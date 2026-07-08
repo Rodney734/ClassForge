@@ -372,188 +372,153 @@ class _ChatScreenState extends State<ChatScreen>
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: const NetworkImage(
-              "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              isDarkMode
-                  ? const Color.fromARGB(255, 99, 85, 85).withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.3),
-              BlendMode.darken,
-            ),
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDarkMode
-                  ? [
-                      Colors.black.withValues(alpha: 0.75),
-                      Colors.black.withValues(alpha: 0.85),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.85),
-                      Colors.white.withValues(alpha: 0.95),
-                    ],
-            ),
-          ),
-          child: SafeArea(
-            bottom: false, // Bottom navigation handles its own safe area
-            child: Column(
-              children: [
-                // Glass AppBar
-                _buildGlassAppBar(user, isDarkMode, isDesktop),
+      body: SafeArea(
+        bottom: false, // Bottom navigation handles its own safe area
+        child: Column(
+          children: [
+            // Glass AppBar
+            _buildGlassAppBar(user, isDarkMode, isDesktop),
 
-                // Reply Bar
-                if (_replyingTo != null) _buildReplyBar(isDarkMode),
+            // Reply Bar
+            if (_replyingTo != null) _buildReplyBar(isDarkMode),
 
-                // Chat Messages - Wrap with Expanded
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: (user == null)
-                        ? const Stream.empty()
-                        : FirebaseFirestore.instance
-                              .collection('messages')
-                              .where('level', isEqualTo: user.level)
-                              .orderBy('timestamp', descending: true)
-                              .snapshots(),
-                    builder: (context, snapshot) {
-                      if (user == null) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+            // Chat Messages - Wrap with Expanded
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: (user == null)
+                    ? const Stream.empty()
+                    : FirebaseFirestore.instance
+                          .collection('messages')
+                          .where('level', isEqualTo: user.level)
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
+                builder: (context, snapshot) {
+                  if (user == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                      if (snapshot.hasError) {
-                        // This will now print the REAL error (like Missing Index)
-                        // to the console instead of just crashing the debugger.
-                        print("❌ Firestore Stream Error: ${snapshot.error}");
-                        return Center(
-                          child: Text(
-                            'Error: ${snapshot.error}',
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
+                  if (snapshot.hasError) {
+                    // This will now print the REAL error (like Missing Index)
+                    // to the console instead of just crashing the debugger.
+                    print("❌ Firestore Stream Error: ${snapshot.error}");
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (!snapshot.hasData &&
+                      snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF00F5FF),
                             ),
                           ),
-                        );
-                      }
-
-                      if (!snapshot.hasData &&
-                          snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF00F5FF),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                "Loading messages...",
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: 16),
+                          Text(
+                            "Loading messages...",
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
                           ),
-                        );
-                      }
+                        ],
+                      ),
+                    );
+                  }
 
-                      final messages = snapshot.data!.docs;
+                  final messages = snapshot.data!.docs;
 
-                      if (messages.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline,
-                                size: 80,
-                                color: isDarkMode
-                                    ? Colors.white24
-                                    : Colors.black26,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                "No messages yet.\nBe the first to say hello!",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.white54
-                                      : Colors.black54,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
+                  if (messages.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            size: 80,
+                            color: isDarkMode ? Colors.white24 : Colors.black26,
                           ),
-                        );
-                      }
+                          const SizedBox(height: 16),
+                          Text(
+                            "No messages yet.\nBe the first to say hello!",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white54
+                                  : Colors.black54,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
 
-                      return ListView.builder(
-                        controller: _scrollController,
-                        reverse: true,
-                        padding: EdgeInsets.only(
-                          left: isDesktop ? 20 : 12,
-                          right: isDesktop ? 20 : 12,
-                          top: isDesktop ? 20 : 12,
-                          bottom: 20, // Add extra bottom padding
-                        ),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          final doc = messages[index];
-                          final data = doc.data() as Map<String, dynamic>;
+                  return ListView.builder(
+                    controller: _scrollController,
+                    reverse: true,
+                    padding: EdgeInsets.only(
+                      left: isDesktop ? 20 : 12,
+                      right: isDesktop ? 20 : 12,
+                      top: isDesktop ? 20 : 12,
+                      bottom: 20, // Add extra bottom padding
+                    ),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final doc = messages[index];
+                      final data = doc.data() as Map<String, dynamic>;
 
-                          final msg = {
-                            'messageId': doc.id,
-                            ...data,
-                            'timestamp':
-                                (data['timestamp'] as Timestamp?)
-                                    ?.millisecondsSinceEpoch ??
-                                DateTime.now().millisecondsSinceEpoch,
-                          };
+                      final msg = {
+                        'messageId': doc.id,
+                        ...data,
+                        'timestamp':
+                            (data['timestamp'] as Timestamp?)
+                                ?.millisecondsSinceEpoch ??
+                            DateTime.now().millisecondsSinceEpoch,
+                      };
 
-                          final isMe = data['senderId'] == user.uid;
+                      final isMe = data['senderId'] == user.uid;
 
-                          return Column(
-                            children: [
-                              // Reply indicator if this message is a reply
-                              if (msg['replyToId'] != null)
-                                _buildReplyIndicator(msg, isDarkMode),
+                      return Column(
+                        children: [
+                          // Reply indicator if this message is a reply
+                          if (msg['replyToId'] != null)
+                            _buildReplyIndicator(msg, isDarkMode),
 
-                              GestureDetector(
-                                onLongPress: () => _setReplyingTo(msg),
-                                child: _buildMessageBubble(
-                                  msg,
-                                  isMe,
-                                  isDarkMode,
-                                  isDesktop,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                          GestureDetector(
+                            onLongPress: () => _setReplyingTo(msg),
+                            child: _buildMessageBubble(
+                              msg,
+                              isMe,
+                              isDarkMode,
+                              isDesktop,
+                            ),
+                          ),
+                        ],
                       );
                     },
-                  ),
-                ),
-
-                // Typing Indicator
-                if (_typingUser.isNotEmpty)
-                  _buildTypingIndicator(isDarkMode, _typingUser),
-
-                // Input Bar - Move this OUTSIDE of Expanded
-                _buildInputBar(user, isDarkMode, isDesktop),
-              ],
+                  );
+                },
+              ),
             ),
-          ),
+
+            // Typing Indicator
+            if (_typingUser.isNotEmpty)
+              _buildTypingIndicator(isDarkMode, _typingUser),
+
+            // Input Bar - Move this OUTSIDE of Expanded
+            _buildInputBar(user, isDarkMode, isDesktop),
+          ],
         ),
       ),
     );

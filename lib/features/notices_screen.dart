@@ -43,136 +43,103 @@ class _NoticesScreenState extends State<NoticesScreen>
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: const NetworkImage(
-              "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              isDarkMode
-                  ? Colors.black.withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.3),
-              BlendMode.darken,
-            ),
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDarkMode
-                  ? [
-                      Colors.black.withValues(alpha: 0.75),
-                      Colors.black.withValues(alpha: 0.9),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.85),
-                      Colors.white.withValues(alpha: 0.95),
-                    ],
-            ),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                // Glass Morphism AppBar
-                _buildGlassAppBar(isDarkMode, isLecturer),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Glass Morphism AppBar
+            _buildGlassAppBar(isDarkMode, isLecturer),
 
-                // Notices List
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('notices')
-                        .where('level', isEqualTo: user?.level ?? 4)
-                        .orderBy('timestamp', descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF00F5FF),
+            // Notices List
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('notices')
+                    .where('level', isEqualTo: user?.level ?? 4)
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF00F5FF),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    debugPrint("❌ Firestore Error: ${snapshot.error}");
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 60,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "Error loading notices",
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
                             ),
                           ),
-                        );
-                      }
+                        ],
+                      ),
+                    );
+                  }
 
-                      if (snapshot.hasError) {
-                        debugPrint("❌ Firestore Error: ${snapshot.error}");
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                size: 60,
-                                color: Colors.red,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                "Error loading notices",
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.white70
-                                      : Colors.black54,
+                  final notices = snapshot.data?.docs ?? [];
+
+                  if (notices.isEmpty) {
+                    return _buildEmptyState(isDarkMode);
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    itemCount: notices.length,
+                    itemBuilder: (context, index) {
+                      final notice =
+                          notices[index].data() as Map<String, dynamic>;
+                      return FadeTransition(
+                        opacity: _animationController,
+                        child: SlideTransition(
+                          position:
+                              Tween<Offset>(
+                                begin: const Offset(0, 0.1),
+                                end: Offset.zero,
+                              ).animate(
+                                CurvedAnimation(
+                                  parent: _animationController,
+                                  curve: Interval(
+                                    index * 0.1,
+                                    1.0,
+                                    curve: Curves.easeOut,
+                                  ),
                                 ),
                               ),
-                            ],
+                          child: _buildNoticeCard(
+                            notice,
+                            isDarkMode,
+                            isLecturer,
+                            notices[index].id,
                           ),
-                        );
-                      }
-
-                      final notices = snapshot.data?.docs ?? [];
-
-                      if (notices.isEmpty) {
-                        return _buildEmptyState(isDarkMode);
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
                         ),
-                        itemCount: notices.length,
-                        itemBuilder: (context, index) {
-                          final notice =
-                              notices[index].data() as Map<String, dynamic>;
-                          return FadeTransition(
-                            opacity: _animationController,
-                            child: SlideTransition(
-                              position:
-                                  Tween<Offset>(
-                                    begin: const Offset(0, 0.1),
-                                    end: Offset.zero,
-                                  ).animate(
-                                    CurvedAnimation(
-                                      parent: _animationController,
-                                      curve: Interval(
-                                        index * 0.1,
-                                        1.0,
-                                        curve: Curves.easeOut,
-                                      ),
-                                    ),
-                                  ),
-                              child: _buildNoticeCard(
-                                notice,
-                                isDarkMode,
-                                isLecturer,
-                                notices[index].id,
-                              ),
-                            ),
-                          );
-                        },
                       );
                     },
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
-          ),
+          ],
         ),
       ),
       // FAB only for lecturers

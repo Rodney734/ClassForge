@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:classforge/features/student_home.dart';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -49,76 +48,43 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          image:
-              user.backgroundImage != null && user.backgroundImage!.isNotEmpty
-              ? DecorationImage(
-                  image: MemoryImage(base64Decode(user.backgroundImage!)),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                    (isDarkMode ? Colors.black : Colors.white).withOpacity(0.5),
-                    BlendMode.darken,
-                  ),
-                )
-              : null,
-          color: isDarkMode ? Colors.black : Colors.grey[200],
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDarkMode
-                  ? [
-                      Colors.black.withValues(alpha: 0.75),
-                      Colors.black.withValues(alpha: 0.85),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.85),
-                      Colors.white.withValues(alpha: 0.95),
-                    ],
-            ),
-          ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.all(isDesktop ? 40 : 20),
-              child: FadeTransition(
-                opacity: _animationController,
-                child: Column(
-                  children: [
-                    // Header with theme toggle
-                    _buildHeader(isDarkMode, isDesktop, widget.toggleTheme),
+      backgroundColor: Colors.transparent, // Keep scaffold transparent
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.all(isDesktop ? 40 : 20),
+          child: FadeTransition(
+            opacity: _animationController,
+            child: Column(
+              children: [
+                // Header with theme toggle
+                _buildHeader(isDarkMode, isDesktop, widget.toggleTheme),
 
-                    const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-                    // Profile Picture Section
-                    _buildProfilePictureSection(user, isDarkMode, isDesktop),
+                // Profile Picture Section
+                _buildProfilePictureSection(user, isDarkMode, isDesktop),
 
-                    const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-                    // User Info Section
-                    _buildUserInfoSection(user, isDarkMode),
+                // User Info Section
+                _buildUserInfoSection(user, isDarkMode),
 
-                    const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-                    // Stats Section
-                    _buildStatsSection(user, isDarkMode),
+                // Stats Section
+                _buildStatsSection(user, isDarkMode),
 
-                    const SizedBox(height: 30),
+                const SizedBox(height: 30),
 
-                    // Change Background Button
-                    _buildChangeBackgroundButton(isDarkMode),
+                // Change Background Button
+                _buildChangeBackgroundButton(isDarkMode),
 
-                    // Account Actions Section
-                    _buildAccountActionsSection(auth, isDarkMode),
+                // Account Actions Section
+                _buildAccountActionsSection(auth, isDarkMode),
 
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -160,8 +126,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         Switch(
           value: isDarkMode,
           onChanged: (value) => toggleTheme(),
-          activeTrackColor: const Color(0xFF00F5FF).withOpacity(0.5),
-          activeColor: const Color(0xFF00F5FF),
+          activeTrackColor: const Color(0xFF00F5FF).withValues(alpha: 0.5),
+          activeThumbColor: const Color(0xFF00F5FF),
           inactiveThumbColor: Colors.grey.shade400,
           inactiveTrackColor: Colors.grey.shade200,
         ),
@@ -451,10 +417,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: (isDarkMode ? Colors.white : Colors.black).withOpacity(0.08),
+          color: (isDarkMode ? Colors.white : Colors.black).withValues(
+            alpha: 0.08,
+          ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: (isDarkMode ? Colors.white : Colors.black).withOpacity(0.15),
+            color: (isDarkMode ? Colors.white : Colors.black).withValues(
+              alpha: 0.15,
+            ),
           ),
         ),
         child: Row(

@@ -112,315 +112,277 @@ class _CreateAttendanceScreenState extends State<CreateAttendanceScreen> {
         foregroundColor: isDarkMode ? Colors.white : Colors.black87,
         flexibleSpace: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.redAccent, Colors.red.shade700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            // Removed the gradient to allow global background to show
           ),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: const NetworkImage(
-              "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-            ),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              isDarkMode
-                  ? Colors.black.withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.3),
-              BlendMode.darken,
-            ),
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDarkMode
-                  ? [
-                      Colors.black.withValues(alpha: 0.75),
-                      Colors.black.withValues(alpha: 0.9),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.85),
-                      Colors.white.withValues(alpha: 0.95),
-                    ],
-            ),
-          ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
+      body: SafeArea(
+        // This SafeArea will now directly sit on the transparent Scaffold
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
 
-                    // Header
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.redAccent.withValues(alpha: 0.2),
-                            Colors.purple.withValues(alpha: 0.1),
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.redAccent.withValues(alpha: 0.2),
+                        Colors.purple.withValues(alpha: 0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.qr_code_scanner,
+                          color: Colors.redAccent,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'GPS Attendance',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Students will be marked based on their location',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
+                              ),
+                            ),
                           ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.redAccent.withValues(alpha: 0.3),
                         ),
                       ),
-                      child: Row(
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Course Selection
+                _buildGlassCard(
+                  title: 'Course Name',
+                  icon: Icons.school_outlined,
+                  child: TextFormField(
+                    controller: _courseNameController,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g., Computer Science 101',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'Please enter course name'
+                        : null,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Lecture Title
+                _buildGlassCard(
+                  title: 'Lecture Title',
+                  icon: Icons.title,
+                  child: TextFormField(
+                    controller: _lectureTitleController,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'e.g., Introduction to Flutter',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'Please enter lecture title'
+                        : null,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Duration Selection
+                _buildGlassCard(
+                  title: 'Attendance Duration',
+                  icon: Icons.timer,
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(
-                              Icons.qr_code_scanner,
+                          _durationButton(5, '5 min', isDarkMode),
+                          const SizedBox(width: 12),
+                          _durationButton(10, '10 min', isDarkMode),
+                          const SizedBox(width: 12),
+                          _durationButton(15, '15 min', isDarkMode),
+                          const SizedBox(width: 12),
+                          _durationButton(30, '30 min', isDarkMode),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Radius Selection
+                _buildGlassCard(
+                  title: 'Attendance Radius',
+                  icon: Icons.radar,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${_radius.toStringAsFixed(0)} meters',
+                            style: const TextStyle(
                               color: Colors.redAccent,
-                              size: 32,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _radius <= 100 ? 'Tight Range' : 'Wide Range',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _radius <= 100
+                                    ? Colors.orange
+                                    : Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: _radius,
+                        min: 50,
+                        max: 500,
+                        divisions: 9,
+                        label: '${_radius.toStringAsFixed(0)} meters',
+                        onChanged: (value) {
+                          setState(() {
+                            _radius = value;
+                          });
+                        },
+                        activeColor: Colors.redAccent,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'GPS Attendance',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  'Students will be marked based on their location',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDarkMode
-                                        ? Colors.white70
-                                        : Colors.black54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    // Course Selection
-                    _buildGlassCard(
-                      title: 'Course Name',
-                      icon: Icons.school_outlined,
-                      child: TextFormField(
-                        controller: _courseNameController,
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                        decoration: const InputDecoration(
-                          hintText: 'e.g., Computer Science 101',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        validator: (value) => value?.isEmpty ?? true
-                            ? 'Please enter course name'
-                            : null,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Lecture Title
-                    _buildGlassCard(
-                      title: 'Lecture Title',
-                      icon: Icons.title,
-                      child: TextFormField(
-                        controller: _lectureTitleController,
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                        decoration: const InputDecoration(
-                          hintText: 'e.g., Introduction to Flutter',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                        validator: (value) => value?.isEmpty ?? true
-                            ? 'Please enter lecture title'
-                            : null,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Duration Selection
-                    _buildGlassCard(
-                      title: 'Attendance Duration',
-                      icon: Icons.timer,
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              _durationButton(5, '5 min', isDarkMode),
-                              const SizedBox(width: 12),
-                              _durationButton(10, '10 min', isDarkMode),
-                              const SizedBox(width: 12),
-                              _durationButton(15, '15 min', isDarkMode),
-                              const SizedBox(width: 12),
-                              _durationButton(30, '30 min', isDarkMode),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Radius Selection
-                    _buildGlassCard(
-                      title: 'Attendance Radius',
-                      icon: Icons.radar,
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${_radius.toStringAsFixed(0)} meters',
-                                style: const TextStyle(
-                                  color: Colors.redAccent,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  _radius <= 100 ? 'Tight Range' : 'Wide Range',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: _radius <= 100
-                                        ? Colors.orange
-                                        : Colors.green,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Slider(
-                            value: _radius,
-                            min: 50,
-                            max: 500,
-                            divisions: 9,
-                            label: '${_radius.toStringAsFixed(0)} meters',
-                            onChanged: (value) {
-                              setState(() {
-                                _radius = value;
-                              });
-                            },
-                            activeColor: Colors.redAccent,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 14,
+                            child: Text(
+                              'Students must be within this radius to be marked present',
+                              style: TextStyle(
+                                fontSize: 11,
                                 color: Colors.grey,
                               ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  'Students must be within this radius to be marked present',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
-                    ),
-
-                    const SizedBox(height: 30),
-
-                    // Start Button
-                    Container(
-                      width: double.infinity,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Colors.redAccent,
-                            Color.fromARGB(255, 156, 52, 52),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.redAccent.withValues(alpha: 0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _startAttendance,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.white,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                'START ATTENDANCE',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 30),
+
+                // Start Button
+                Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Colors.redAccent,
+                        Color.fromARGB(255, 156, 52, 52),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.redAccent.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _startAttendance,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'START ATTENDANCE',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

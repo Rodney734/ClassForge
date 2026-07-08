@@ -113,21 +113,14 @@ class _ScheduleClassScreenState extends State<ScheduleClassScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('Schedule a Class'),
-        backgroundColor: Colors.redAccent,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black87,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDarkMode
-                ? [Colors.grey[900]!, Colors.grey[800]!]
-                : [Colors.grey[100]!, Colors.white],
-          ),
-        ),
+      body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Form(

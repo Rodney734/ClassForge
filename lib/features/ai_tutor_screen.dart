@@ -1,7 +1,6 @@
 import 'package:classforge/services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import '../services/ai_tutor_service.dart';
@@ -150,133 +149,119 @@ class _AITutorScreenState extends State<AITutorScreen>
     }
 
     return Scaffold(
-      backgroundColor: isDarkMode
-          ? const Color(0xFF121212)
-          : const Color(0xFFF5F5F5),
+      backgroundColor: Colors.transparent,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isDarkMode
-                  ? [const Color(0xFF1A1A2E), const Color(0xFF16213E)]
-                  : [const Color(0xFFF0F2F5), Colors.white],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Glass AppBar
-                _buildGlassAppBar(isDarkMode),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Glass AppBar
+              _buildGlassAppBar(isDarkMode),
 
-                // Mode Indicator
-                if (_isQuizMode)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+              // Mode Indicator
+              if (_isQuizMode)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Colors.purple, Colors.deepPurple],
                     ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Colors.purple, Colors.deepPurple],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.quiz, color: Colors.white, size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        'Quiz Mode',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.quiz, color: Colors.white, size: 16),
-                        SizedBox(width: 6),
-                        Text(
-                          'Quiz Mode',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                    ],
+                  ),
+                ),
+              // Messages
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _aiService.getChatStream(user.uid),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return _isQuizMode
+                          ? _buildQuizWelcome(isDarkMode)
+                          : _buildWelcomeMessage(isDarkMode);
+                    }
+
+                    _scrollToBottom();
+                    final messages = snapshot.data!.docs;
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: messages.length + (_isLoading ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (_isLoading && index == messages.length) {
+                          return _buildTypingIndicator(isDarkMode);
+                        }
+                        final doc = messages[index];
+                        final data = doc.data() as Map<String, dynamic>;
+                        return _buildMessageBubble(
+                          text: data['text'] ?? '',
+                          isUser: data['isUser'] ?? false,
+                          isDarkMode: isDarkMode,
+                          timestamp: (data['timestamp'] as Timestamp?)
+                              ?.toDate(),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Quiz Topics (when in quiz mode)
+              if (_isQuizMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  height: 60,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _quizTopics.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ActionChip(
+                          label: Text(
+                            _quizTopics[index],
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          onPressed: () => _startQuizMode(_quizTopics[index]),
+                          backgroundColor: Colors.purple.withOpacity(0.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-
-                // Messages
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _aiService.getChatStream(user.uid),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting &&
-                          !snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return _isQuizMode
-                            ? _buildQuizWelcome(isDarkMode)
-                            : _buildWelcomeMessage(isDarkMode);
-                      }
-
-                      _scrollToBottom();
-                      final messages = snapshot.data!.docs;
-
-                      return ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: messages.length + (_isLoading ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (_isLoading && index == messages.length) {
-                            return _buildTypingIndicator(isDarkMode);
-                          }
-                          final doc = messages[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          return _buildMessageBubble(
-                            text: data['text'] ?? '',
-                            isUser: data['isUser'] ?? false,
-                            isDarkMode: isDarkMode,
-                            timestamp: (data['timestamp'] as Timestamp?)
-                                ?.toDate(),
-                          );
-                        },
                       );
                     },
                   ),
                 ),
 
-                // Quiz Topics (when in quiz mode)
-                if (_isQuizMode)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    height: 60,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _quizTopics.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ActionChip(
-                            label: Text(
-                              _quizTopics[index],
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            onPressed: () => _startQuizMode(_quizTopics[index]),
-                            backgroundColor: Colors.purple.withOpacity(0.8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                // Input Bar
-                _buildInputBar(isDarkMode),
-              ],
-            ),
+              // Input Bar
+              _buildInputBar(isDarkMode),
+            ],
           ),
         ),
       ),
@@ -290,17 +275,19 @@ class _AITutorScreenState extends State<AITutorScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            (isDarkMode ? Colors.white : Colors.black).withOpacity(0.12),
-            (isDarkMode ? Colors.white : Colors.black).withOpacity(0.06),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.12),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.06),
           ],
         ),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withOpacity(0.15),
+          color: (isDarkMode ? Colors.white : Colors.black).withValues(
+            alpha: 0.15,
+          ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
@@ -313,8 +300,8 @@ class _AITutorScreenState extends State<AITutorScreen>
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (isDarkMode ? Colors.white : Colors.black).withOpacity(
-                  0.1,
+                color: (isDarkMode ? Colors.white : Colors.black).withValues(
+                  alpha: 0.1,
                 ),
                 shape: BoxShape.circle,
               ),
@@ -368,7 +355,7 @@ class _AITutorScreenState extends State<AITutorScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF00F5FF).withOpacity(0.2),
+              color: const Color(0xFF00F5FF).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Text(
@@ -401,7 +388,7 @@ class _AITutorScreenState extends State<AITutorScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF00F5FF).withOpacity(0.3),
+                    color: const Color(0xFF00F5FF).withValues(alpha: 0.3),
                     blurRadius: 30,
                   ),
                 ],
@@ -446,7 +433,9 @@ class _AITutorScreenState extends State<AITutorScreen>
                     ),
                   ),
                   onPressed: () => _sendMessage(topic),
-                  backgroundColor: const Color(0xFF00F5FF).withOpacity(0.1),
+                  backgroundColor: const Color(
+                    0xFF00F5FF,
+                  ).withValues(alpha: 0.1),
                   side: const BorderSide(color: Color(0xFF00F5FF)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -476,7 +465,7 @@ class _AITutorScreenState extends State<AITutorScreen>
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.purple.withOpacity(0.3),
+                    color: Colors.purple.withValues(alpha: 0.3),
                     blurRadius: 30,
                   ),
                 ],
@@ -517,7 +506,7 @@ class _AITutorScreenState extends State<AITutorScreen>
                     ),
                   ),
                   onPressed: () => _startQuizMode(topic),
-                  backgroundColor: Colors.purple.withOpacity(0.1),
+                  backgroundColor: Colors.purple.withValues(alpha: 0.1),
                   side: const BorderSide(color: Colors.purple),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -571,7 +560,7 @@ class _AITutorScreenState extends State<AITutorScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 5,
                   offset: const Offset(0, 2),
                 ),
@@ -585,7 +574,7 @@ class _AITutorScreenState extends State<AITutorScreen>
                   styleSheet: MarkdownStyleSheet(
                     p: TextStyle(color: textColor, fontSize: 15, height: 1.5),
                     code: TextStyle(
-                      backgroundColor: Colors.black.withOpacity(0.2),
+                      backgroundColor: Colors.black.withValues(alpha: 0.2),
                       fontFamily: 'monospace',
                       color: isDarkMode ? Colors.white : Colors.black87,
                     ),
@@ -673,17 +662,19 @@ class _AITutorScreenState extends State<AITutorScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            (isDarkMode ? Colors.white : Colors.black).withOpacity(0.1),
-            (isDarkMode ? Colors.white : Colors.black).withOpacity(0.05),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withOpacity(0.15),
+          color: (isDarkMode ? Colors.white : Colors.black).withValues(
+            alpha: 0.15,
+          ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -4),
           ),
@@ -698,8 +689,8 @@ class _AITutorScreenState extends State<AITutorScreen>
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: _isQuizMode
-                    ? Colors.purple.withOpacity(0.2)
-                    : const Color(0xFF00F5FF).withOpacity(0.2),
+                    ? Colors.purple.withValues(alpha: 0.2)
+                    : const Color(0xFF00F5FF).withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -745,8 +736,8 @@ class _AITutorScreenState extends State<AITutorScreen>
                 boxShadow: [
                   BoxShadow(
                     color: _isQuizMode
-                        ? Colors.purple.withOpacity(0.3)
-                        : const Color(0xFF00F5FF).withOpacity(0.3),
+                        ? Colors.purple.withValues(alpha: 0.3)
+                        : const Color(0xFF00F5FF).withValues(alpha: 0.3),
                     blurRadius: 8,
                   ),
                 ],

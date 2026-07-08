@@ -426,7 +426,7 @@ class _LiveClassScreenState extends State<LiveClassScreen>
     final isLecturer = widget.isHost || user?.role == "lecturer";
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       body: GestureDetector(
         onTap: () => setState(() => _showChat = false),
         child: Stack(

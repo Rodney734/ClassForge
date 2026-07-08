@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import 'live_class_screen.dart';
@@ -72,32 +73,51 @@ class _LecturerHomeState extends State<LecturerHome>
   @override
   Widget build(BuildContext context) {
     final isDarkMode = widget.isDarkMode;
+    final auth = Provider.of<AuthService>(context);
+    final user = auth.currentUser;
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    return Scaffold(
-      // Ensures the body shrinks to make room for the keyboard
-      resizeToAvoidBottomInset: true,
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: _currentIndex == 0 && _activeSubPage != null
-            ? _activeSubPage!
-            : _pages[_currentIndex],
+    return Container(
+      decoration: BoxDecoration(
+        image:
+            user?.backgroundImage != null && user!.backgroundImage!.isNotEmpty
+            ? DecorationImage(
+                image: MemoryImage(base64Decode(user.backgroundImage!)),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  (isDarkMode ? Colors.black : Colors.white).withOpacity(0.5),
+                  BlendMode.darken,
+                ),
+              )
+            : null,
+        color: isDarkMode ? Colors.black : Colors.grey[200],
       ),
-      // Hide the bottom nav when typing to give the flexible text box more room
-      bottomNavigationBar: isKeyboardVisible
-          ? const SizedBox.shrink()
-          : _buildModernBottomNav(isDarkMode),
-      floatingActionButton: isKeyboardVisible
-          ? null
-          : FloatingActionButton(
-              onPressed: () => _setSubPage(
-                LiveClassScreen(onLeave: () => _setSubPage(null)),
+      child: Scaffold(
+        // Ensures the body shrinks to make room for the keyboard
+        resizeToAvoidBottomInset: true,
+        backgroundColor: Colors.transparent,
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _currentIndex == 0 && _activeSubPage != null
+              ? _activeSubPage!
+              : _pages[_currentIndex],
+        ),
+        // Hide the bottom nav when typing to give the flexible text box more room
+        bottomNavigationBar: isKeyboardVisible
+            ? const SizedBox.shrink()
+            : _buildModernBottomNav(isDarkMode),
+        floatingActionButton: isKeyboardVisible
+            ? null
+            : FloatingActionButton(
+                onPressed: () => _setSubPage(
+                  LiveClassScreen(onLeave: () => _setSubPage(null)),
+                ),
+                backgroundColor: Colors.redAccent,
+                elevation: 10,
+                child: const Icon(Icons.live_tv, color: Colors.white, size: 32),
               ),
-              backgroundColor: Colors.redAccent,
-              elevation: 10,
-              child: const Icon(Icons.live_tv, color: Colors.white, size: 32),
-            ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      ),
     );
   }
 
@@ -253,81 +273,43 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
     final isDesktop = screenWidth > 800;
     final isTablet = screenWidth > 600 && screenWidth <= 800;
 
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: const NetworkImage(
-            "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
-          ),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            isDarkMode
-                ? const Color.fromARGB(
-                    255,
-                    213,
-                    194,
-                    194,
-                  ).withValues(alpha: 0.7)
-                : Colors.white.withValues(alpha: 0.3),
-            BlendMode.darken,
-          ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.only(
+          left: isDesktop ? 40 : (isTablet ? 30 : 20),
+          right: isDesktop ? 40 : (isTablet ? 30 : 20),
+          top: isDesktop ? 40 : (isTablet ? 30 : 20),
+          bottom: 100,
         ),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: isDarkMode
-                ? [
-                    Colors.black.withValues(alpha: 0.75),
-                    Colors.black.withValues(alpha: 0.9),
-                  ]
-                : [
-                    Colors.white.withValues(alpha: 0.85),
-                    Colors.white.withValues(alpha: 0.95),
-                  ],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: EdgeInsets.only(
-              left: isDesktop ? 40 : (isTablet ? 30 : 20),
-              right: isDesktop ? 40 : (isTablet ? 30 : 20),
-              top: isDesktop ? 40 : (isTablet ? 30 : 20),
-              bottom: 100,
-            ),
-            child: FadeTransition(
-              opacity: _animationController,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header Section
-                  _buildHeader(user, isDarkMode, isDesktop, isTablet),
-                  const SizedBox(height: 25),
+        child: FadeTransition(
+          opacity: _animationController,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header Section
+              _buildHeader(user, isDarkMode, isDesktop, isTablet),
+              const SizedBox(height: 25),
 
-                  // Stats Cards
-                  _buildStatsSection(user, isDarkMode),
-                  const SizedBox(height: 30),
+              // Stats Cards
+              _buildStatsSection(user, isDarkMode),
+              const SizedBox(height: 30),
 
-                  // Quick Actions Section
-                  _buildQuickActionsHeader(isDarkMode, isDesktop, isTablet),
-                  const SizedBox(height: 12),
-                  _buildQuickActionsGrid(isDarkMode, isDesktop, isTablet),
-                  const SizedBox(height: 25),
+              // Quick Actions Section
+              _buildQuickActionsHeader(isDarkMode, isDesktop, isTablet),
+              const SizedBox(height: 12),
+              _buildQuickActionsGrid(isDarkMode, isDesktop, isTablet),
+              const SizedBox(height: 25),
 
-                  // Upcoming Scheduled Classes
-                  _buildUpcomingClassesSection(isDarkMode),
-                  const SizedBox(height: 25),
+              // Upcoming Scheduled Classes
+              _buildUpcomingClassesSection(isDarkMode),
+              const SizedBox(height: 25),
 
-                  // Recent Activity Section
-                  _buildRecentActivitySection(isDarkMode),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
+              // Recent Activity Section
+              _buildRecentActivitySection(isDarkMode),
+              const SizedBox(height: 20),
+            ],
           ),
         ),
       ),
