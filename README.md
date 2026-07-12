@@ -32,7 +32,7 @@ ClassForge is a modern classroom management platform that unifies communication,
 
 <p align="center">
 
-<a href="#ICTAM image view">Screenshots</a> •
+<a href="#ClassForge/ICTAM image view">Screenshots</a> •
 
 
 
