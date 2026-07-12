@@ -32,16 +32,8 @@ ClassForge is a modern classroom management platform that unifies communication,
 
 <p align="center">
 
-<a href="#overview">Overview</a> •
-<a href="#features">Features</a> •
-<a href="#technology-stack">Tech Stack</a> •
-<a href="#architecture">Architecture</a> •
-<a href="#getting-started">Getting Started</a> •
-<a href="#roadmap">Roadmap</a> •
-<a href="#methodology">Methodology</a> •
-<a href="#project-objectives">Project Objectives</a> •
-<a href="#installation">Installation</a> •
-<a href="#screenshots">Screenshots</a> •
+<a href="#ICTAM image view">Screenshots</a> •
+
 
 
 </p>
