@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import '../services/forum_service.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 
 class ForumScreen extends StatefulWidget {
   const ForumScreen({super.key});
@@ -261,90 +262,93 @@ class _ForumScreenState extends State<ForumScreen>
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 80, // Adjusted height
+        borderRadius: 30,
+        blur: 20,
+        linearGradient: LinearGradient(
           colors: [
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.12),
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.06),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.15,
-          ),
+        border: 1,
+        borderGradient: LinearGradient(
+          colors: [
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Colors.redAccent, Color.fromARGB(255, 206, 127, 127)],
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Colors.redAccent,
+                    Color.fromARGB(255, 206, 127, 127),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
-              borderRadius: BorderRadius.circular(16),
+              child: const Icon(Icons.forum, color: Colors.white, size: 24),
             ),
-            child: const Icon(Icons.forum, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Q&A Forum",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Q&A Forum",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
                   ),
-                ),
-                Text(
-                  "Ask questions, share knowledge",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDarkMode ? Colors.white54 : Colors.black54,
+                  Text(
+                    "Ask questions, share knowledge",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDarkMode ? Colors.white54 : Colors.black54,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.orange, Colors.orange.shade700],
+                ],
               ),
-              borderRadius: BorderRadius.circular(20),
             ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.local_fire_department,
-                  color: Colors.white,
-                  size: 16,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.orange, Colors.orange.shade700],
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  "🔥 ${user?.streak ?? 0}",
-                  style: const TextStyle(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.local_fire_department,
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    size: 16,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  Text(
+                    "🔥 ${user?.streak ?? 0}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -406,147 +410,161 @@ class _ForumScreenState extends State<ForumScreen>
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 200, // Adjusted height, may need more if answers are long
+        borderRadius: 24,
+        blur: 20,
+        linearGradient: LinearGradient(
           colors: [
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.08),
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.04),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isResolved
-              ? Colors.green.withValues(alpha: 0.3)
-              : (isDarkMode ? Colors.white : Colors.black).withValues(
-                  alpha: 0.1,
-                ),
-        ),
-      ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isResolved
-                ? Colors.green.withValues(alpha: 0.2)
-                : Colors.redAccent.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            isResolved ? Icons.check_circle : Icons.help_outline,
-            color: isResolved ? Colors.green : Colors.redAccent,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          data['questionText'],
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: isDarkMode ? Colors.white : Colors.black87,
-            decoration: isResolved ? TextDecoration.lineThrough : null,
-          ),
-        ),
-        subtitle: Row(
-          children: [
-            Text(
-              "Asked by ${data['askerName']}",
-              style: TextStyle(
-                fontSize: 12,
-                color: isDarkMode ? Colors.white54 : Colors.black54,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: isResolved
-                    ? Colors.green.withValues(alpha: 0.2)
-                    : Colors.orange.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                isResolved ? "✅ Resolved" : "❓ Open",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isResolved ? Colors.green : Colors.orange,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+        border: 1,
+        borderGradient: LinearGradient(
+          colors: [
+            isResolved
+                ? Colors.green.withValues(alpha: 0.3)
+                : (isDarkMode ? Colors.white : Colors.black).withValues(
+                    alpha: 0.2,
+                  ),
+            isResolved
+                ? Colors.green.withValues(alpha: 0.3)
+                : (isDarkMode ? Colors.white : Colors.black).withValues(
+                    alpha: 0.2,
+                  ),
           ],
         ),
-        children: [
-          _buildAnswerList(qId, isAsker, user, isDarkMode),
-          if (!isResolved)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: (isDarkMode ? Colors.white : Colors.black).withValues(
-                    alpha: 0.05,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.redAccent.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _answerController,
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: "Write your answer...",
-                          hintStyle: TextStyle(
-                            color: isDarkMode ? Colors.white54 : Colors.black54,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      margin: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Colors.redAccent,
-                            Color.fromARGB(255, 183, 105, 105),
-                          ],
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.send,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        onPressed: () async {
-                          if (_answerController.text.isNotEmpty &&
-                              user != null) {
-                            await _forumService.submitAnswer(
-                              questionId: qId,
-                              text: _answerController.text,
-                              user: user,
-                            );
-                            _answerController.clear();
-                          }
-                        },
-                      ),
-                    ),
-                  ],
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isResolved
+                  ? Colors.green.withValues(alpha: 0.2)
+                  : Colors.redAccent.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isResolved ? Icons.check_circle : Icons.help_outline,
+              color: isResolved ? Colors.green : Colors.redAccent,
+              size: 24,
+            ),
+          ),
+          title: Text(
+            data['questionText'],
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black87,
+              decoration: isResolved ? TextDecoration.lineThrough : null,
+            ),
+          ),
+          subtitle: Row(
+            children: [
+              Text(
+                "Asked by ${data['askerName']}",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDarkMode ? Colors.white54 : Colors.black54,
                 ),
               ),
-            ),
-        ],
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isResolved
+                      ? Colors.green.withValues(alpha: 0.2)
+                      : Colors.orange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isResolved ? "✅ Resolved" : "❓ Open",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isResolved ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          children: [
+            _buildAnswerList(qId, isAsker, user, isDarkMode),
+            if (!isResolved)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: (isDarkMode ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.redAccent.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _answerController,
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: "Write your answer...",
+                            hintStyle: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.white54
+                                  : Colors.black54,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Colors.redAccent,
+                              Color.fromARGB(255, 183, 105, 105),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.send,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: () async {
+                            if (_answerController.text.isNotEmpty &&
+                                user != null) {
+                              await _forumService.submitAnswer(
+                                questionId: qId,
+                                text: _answerController.text,
+                                user: user,
+                              );
+                              _answerController.clear();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

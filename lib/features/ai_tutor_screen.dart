@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import '../services/ai_tutor_service.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 
 class AITutorScreen extends StatefulWidget {
   const AITutorScreen({super.key});
@@ -249,7 +250,7 @@ class _AITutorScreenState extends State<AITutorScreen>
                             style: const TextStyle(color: Colors.white),
                           ),
                           onPressed: () => _startQuizMode(_quizTopics[index]),
-                          backgroundColor: Colors.purple.withOpacity(0.8),
+                          backgroundColor: Colors.purple.withValues(alpha: 0.8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
@@ -272,102 +273,102 @@ class _AITutorScreenState extends State<AITutorScreen>
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 80, // Adjusted height
+        borderRadius: 30,
+        blur: 20,
+        linearGradient: LinearGradient(
           colors: [
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.12),
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.06),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.15,
-          ),
+        border: 1,
+        borderGradient: LinearGradient(
+          colors: [
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: (isDarkMode ? Colors.white : Colors.black).withValues(
+                    alpha: 0.1,
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.arrow_back,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (isDarkMode ? Colors.white : Colors.black).withValues(
-                  alpha: 0.1,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF00F5FF), Color(0xFF00D4FF)],
                 ),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.arrow_back,
-                color: isDarkMode ? Colors.white : Colors.black87,
-                size: 24,
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Colors.black,
+                size: 20,
               ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF00F5FF), Color(0xFF00D4FF)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.auto_awesome,
-              color: Colors.black,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _isQuizMode ? 'AI Quiz Tutor' : 'AI Tutor',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isQuizMode ? 'AI Quiz Tutor' : 'AI Tutor',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
                   ),
-                ),
-                Text(
-                  _isQuizMode
-                      ? '📝 Answer questions to learn'
-                      : 'Ask anything about your studies',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDarkMode ? Colors.white54 : Colors.black54,
+                  Text(
+                    _isQuizMode
+                        ? '📝 Answer questions to learn'
+                        : 'Ask anything about your studies',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDarkMode ? Colors.white54 : Colors.black54,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF00F5FF).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              "Mistral",
-              style: TextStyle(
-                fontSize: 10,
-                color: Color(0xFF00F5FF),
-                fontWeight: FontWeight.bold,
+                ],
               ),
             ),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00F5FF).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                "Mistral",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Color(0xFF00F5FF),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -659,97 +660,97 @@ class _AITutorScreenState extends State<AITutorScreen>
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 70, // Adjusted height
+        borderRadius: 30,
+        blur: 20,
+        linearGradient: LinearGradient(
           colors: [
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
             (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.15,
-          ),
+        border: 1,
+        borderGradient: LinearGradient(
+          colors: [
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Mode Switch Button (Chat/Quiz)
-          GestureDetector(
-            onTap: _toggleMode,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _isQuizMode
-                    ? Colors.purple.withValues(alpha: 0.2)
-                    : const Color(0xFF00F5FF).withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _isQuizMode ? Icons.quiz : Icons.chat,
-                color: _isQuizMode ? Colors.purple : const Color(0xFF00F5FF),
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              enabled: !_isLoading,
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black87,
-              ),
-              decoration: InputDecoration(
-                hintText: _isQuizMode
-                    ? 'Enter a topic to quiz on...'
-                    : 'Ask a question...',
-                hintStyle: TextStyle(
-                  color: isDarkMode ? Colors.white54 : Colors.black38,
+        child: Row(
+          children: [
+            // Mode Switch Button (Chat/Quiz)
+            GestureDetector(
+              onTap: _toggleMode,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _isQuizMode
+                      ? Colors.purple.withValues(alpha: 0.2)
+                      : const Color(0xFF00F5FF).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
                 ),
-                border: InputBorder.none,
+                child: Icon(
+                  _isQuizMode ? Icons.quiz : Icons.chat,
+                  color: _isQuizMode ? Colors.purple : const Color(0xFF00F5FF),
+                  size: 20,
+                ),
               ),
-              onSubmitted: (_) => _sendMessage(null),
             ),
-          ),
-          GestureDetector(
-            onTap: _isLoading ? null : () => _sendMessage(null),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: _isQuizMode
-                    ? const LinearGradient(
-                        colors: [Colors.purple, Colors.deepPurple],
-                      )
-                    : const LinearGradient(
-                        colors: [Color(0xFF00F5FF), Color(0xFF00D4FF)],
-                      ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _isQuizMode
-                        ? Colors.purple.withValues(alpha: 0.3)
-                        : const Color(0xFF00F5FF).withValues(alpha: 0.3),
-                    blurRadius: 8,
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                enabled: !_isLoading,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                decoration: InputDecoration(
+                  hintText: _isQuizMode
+                      ? 'Enter a topic to quiz on...'
+                      : 'Ask a question...',
+                  hintStyle: TextStyle(
+                    color: isDarkMode ? Colors.white54 : Colors.black38,
                   ),
-                ],
-              ),
-              child: Icon(
-                _isLoading ? Icons.stop : Icons.send_rounded,
-                color: Colors.black,
-                size: 22,
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (_) => _sendMessage(null),
               ),
             ),
-          ),
-        ],
+            GestureDetector(
+              onTap: _isLoading ? null : () => _sendMessage(null),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: _isQuizMode
+                      ? const LinearGradient(
+                          colors: [Colors.purple, Colors.deepPurple],
+                        )
+                      : const LinearGradient(
+                          colors: [Color(0xFF00F5FF), Color(0xFF00D4FF)],
+                        ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _isQuizMode
+                          ? Colors.purple.withValues(alpha: 0.3)
+                          : const Color(0xFF00F5FF).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  _isLoading ? Icons.stop : Icons.send_rounded,
+                  color: Colors.black,
+                  size: 22,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

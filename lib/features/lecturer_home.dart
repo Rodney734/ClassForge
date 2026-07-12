@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
@@ -85,7 +86,9 @@ class _LecturerHomeState extends State<LecturerHome>
                 image: MemoryImage(base64Decode(user.backgroundImage!)),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  (isDarkMode ? Colors.black : Colors.white).withOpacity(0.5),
+                  (isDarkMode ? Colors.black : Colors.white).withValues(
+                    alpha: 0.5,
+                  ),
                   BlendMode.darken,
                 ),
               )
@@ -122,55 +125,60 @@ class _LecturerHomeState extends State<LecturerHome>
   }
 
   Widget _buildModernBottomNav(bool isDarkMode) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+    return GlassmorphicContainer(
+      width: double.infinity,
       height: 75,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? Colors.grey[900]!.withValues(alpha: 0.95)
-            : Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 5),
+      borderRadius: 30,
+      blur: 20,
+      linearGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.grey[900]! : Colors.white).withValues(
+            alpha: 0.2,
+          ),
+          (isDarkMode ? Colors.grey[850]! : Colors.white70).withValues(
+            alpha: 0.1,
           ),
         ],
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _navItem(Icons.home_outlined, Icons.home, "Home", 0, isDarkMode),
-          _navItem(
-            Icons.chat_bubble_outline,
-            Icons.chat_bubble,
-            "Chat",
-            1,
-            isDarkMode,
-          ),
-          const SizedBox(width: 60),
-          _navItem(
-            Icons.explore_outlined,
-            Icons.explore,
-            "Discover",
-            3,
-            isDarkMode,
-          ),
-          _navItem(
-            Icons.person_outline,
-            Icons.person,
-            "Profile",
-            4,
-            isDarkMode,
-          ),
+      border: 1,
+      borderGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _navItem(Icons.home_outlined, Icons.home, "Home", 0, isDarkMode),
+            _navItem(
+              Icons.chat_bubble_outline,
+              Icons.chat_bubble,
+              "Chat",
+              1,
+              isDarkMode,
+            ),
+            const SizedBox(width: 60),
+            _navItem(
+              Icons.explore_outlined,
+              Icons.explore,
+              "Discover",
+              3,
+              isDarkMode,
+            ),
+            _navItem(
+              Icons.person_outline,
+              Icons.person,
+              "Profile",
+              4,
+              isDarkMode,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -487,15 +495,11 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
     bool isSmallScreen,
   ) {
     return Container(
+      // Using a standard container here as Glassmorphic might be too busy for small stats
       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
-          ],
+        color: (isDarkMode ? Colors.white : Colors.black).withValues(
+          alpha: 0.08,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withValues(alpha: 0.3)),
@@ -669,58 +673,67 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
     bool isDesktop,
     bool isTablet,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        padding: EdgeInsets.all(isDesktop ? 18 : (isTablet ? 16 : 14)),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: GestureDetector(
+        onTap: onTap,
+        child: GlassmorphicContainer(
+          width: double.infinity,
+          height: double.infinity,
+          borderRadius: 20,
+          blur: 15,
+          linearGradient: LinearGradient(
             colors: [
+              (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
               (isDarkMode ? Colors.white : Colors.black).withValues(
-                alpha: 0.08,
-              ),
-              (isDarkMode ? Colors.white : Colors.black).withValues(
-                alpha: 0.04,
+                alpha: 0.05,
               ),
             ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: accent.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    accent.withValues(alpha: 0.2),
-                    accent.withValues(alpha: 0.1),
-                  ],
+          border: 1,
+          borderGradient: LinearGradient(
+            colors: [
+              accent.withValues(alpha: 0.3),
+              accent.withValues(alpha: 0.3),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(isDesktop ? 18 : (isTablet ? 16 : 14)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        accent.withValues(alpha: 0.2),
+                        accent.withValues(alpha: 0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: isDesktop ? 30 : (isTablet ? 28 : 26),
+                    color: accent,
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(
-                icon,
-                size: isDesktop ? 30 : (isTablet ? 28 : 26),
-                color: accent,
-              ),
+                const SizedBox(height: 10),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: isDesktop ? 14 : (isTablet ? 13 : 12),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black87,
-                fontSize: isDesktop ? 14 : (isTablet ? 13 : 12),
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1094,15 +1107,8 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
               return Container(
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      (isDarkMode ? Colors.white : Colors.black).withValues(
-                        alpha: 0.08,
-                      ),
-                      (isDarkMode ? Colors.white : Colors.black).withValues(
-                        alpha: 0.04,
-                      ),
-                    ],
+                  color: (isDarkMode ? Colors.white : Colors.black).withValues(
+                    alpha: 0.08,
                   ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
@@ -1173,16 +1179,12 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
     final isPast = scheduledDate.isBefore(DateTime.now());
 
     return Container(
+      // Using a standard container here as Glassmorphic might be too busy for list items
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.08),
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.04),
-          ],
+        color: (isDarkMode ? Colors.white : Colors.black).withValues(
+          alpha: 0.08,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
@@ -1338,15 +1340,8 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
               return Container(
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      (isDarkMode ? Colors.white : Colors.black).withValues(
-                        alpha: 0.08,
-                      ),
-                      (isDarkMode ? Colors.white : Colors.black).withValues(
-                        alpha: 0.04,
-                      ),
-                    ],
+                  color: (isDarkMode ? Colors.white : Colors.black).withValues(
+                    alpha: 0.08,
                   ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
@@ -1417,11 +1412,8 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.02),
-          ],
+        color: (isDarkMode ? Colors.white : Colors.black).withValues(
+          alpha: 0.05,
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.2)),

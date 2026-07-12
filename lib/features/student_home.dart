@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 import 'dart:convert';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
@@ -68,7 +69,9 @@ class _StudentHomeState extends State<StudentHome> {
                 image: MemoryImage(base64Decode(user.backgroundImage!)),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  (isDarkMode ? Colors.black : Colors.white).withOpacity(0.5),
+                  (isDarkMode ? Colors.black : Colors.white).withValues(
+                    alpha: 0.5,
+                  ),
                   BlendMode.darken,
                 ),
               )
@@ -102,26 +105,29 @@ class _StudentHomeState extends State<StudentHome> {
   }
 
   Widget _buildModernBottomNav(bool isDarkMode) {
-    return Container(
+    return GlassmorphicContainer(
+      width: double.infinity,
       height: 75,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? Colors.grey[900]!.withValues(alpha: 0.95)
-            : Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 5),
+      borderRadius: 30,
+      blur: 20,
+      linearGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.grey[900]! : Colors.white).withValues(
+            alpha: 0.2,
+          ),
+          (isDarkMode ? Colors.grey[850]! : Colors.white70).withValues(
+            alpha: 0.1,
           ),
         ],
-        border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      border: 1,
+      borderGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -364,7 +370,7 @@ class _StudentDashboardContentState extends State<StudentDashboardContent>
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               // Responsive Quick Access Cards
               LayoutBuilder(
@@ -411,18 +417,25 @@ class _StudentDashboardContentState extends State<StudentDashboardContent>
     bool isDesktop,
     bool isTablet,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: (isDarkMode ? Colors.white : Colors.black).withValues(
-          alpha: 0.08,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.15,
-          ),
-        ),
+    return GlassmorphicContainer(
+      width: double.infinity, // Width remains, height is now flexible
+      height: 200,
+      borderRadius: 24,
+      blur: 20,
+      linearGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      border: 1,
+      borderGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,79 +468,87 @@ class _StudentDashboardContentState extends State<StudentDashboardContent>
           const SizedBox(height: 16),
 
           // Today's class card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFF00D4FF).withValues(alpha: 0.15),
-                  const Color(0xFF00F5FF).withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFF00D4FF).withValues(alpha: 0.3),
-              ),
+          GlassmorphicContainer(
+            width: double.infinity,
+            height: 90, // Adjusted height
+            borderRadius: 16,
+            blur: 10,
+            linearGradient: LinearGradient(
+              colors: [
+                const Color(0xFF00D4FF).withValues(alpha: 0.15),
+                const Color(0xFF00F5FF).withValues(alpha: 0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF00D4FF).withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(
-                    Icons.computer,
-                    color: Color(0xFF00D4FF),
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Mobile Application Development",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Level ${user?.level} • Dr. Adebayo • 10:30 AM",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    "Waiting",
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w600,
+            border: 1,
+            borderGradient: LinearGradient(
+              colors: [
+                const Color(0xFF00D4FF).withValues(alpha: 0.3),
+                const Color(0xFF00D4FF).withValues(alpha: 0.3),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00D4FF).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.computer,
+                      color: Color(0xFF00D4FF),
+                      size: 30,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Mobile Application Development",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Level ${user?.level} • Dr. Adebayo • 10:30 AM",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "Waiting",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -878,47 +899,62 @@ class _StudentDashboardContentState extends State<StudentDashboardContent>
     bool isDesktop,
     bool isTablet,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(isDesktop ? 16 : (isTablet ? 14 : 12)),
-        decoration: BoxDecoration(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.06,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: GestureDetector(
+        onTap: onTap,
+        child: GlassmorphicContainer(
+          width: double.infinity,
+          height: double.infinity,
+          borderRadius: 16,
+          blur: 15,
+          linearGradient: LinearGradient(
+            colors: [
+              (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
+              (isDarkMode ? Colors.white : Colors.black).withValues(
+                alpha: 0.05,
+              ),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: (isDarkMode ? Colors.white : Colors.black).withValues(
-              alpha: 0.1,
+          border: 1,
+          borderGradient: LinearGradient(
+            colors: [
+              (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+              (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(isDesktop ? 16 : (isTablet ? 14 : 12)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: isDesktop ? 28 : (isTablet ? 26 : 24),
+                    color: accent,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: isDesktop ? 13 : (isTablet ? 12 : 11),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                size: isDesktop ? 28 : (isTablet ? 26 : 24),
-                color: accent,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black87,
-                fontSize: isDesktop ? 13 : (isTablet ? 12 : 11),
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
         ),
       ),
     );

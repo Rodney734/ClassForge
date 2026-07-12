@@ -18,7 +18,7 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow delete: if request.auth.uid == userId; // A user can delete their own account
       // A user can update their own profile picture, name, or bio.
-      allow update: if request.auth.uid == userId && request.writeFields.hasAny(['profilePicture', 'fullName', 'bio', 'backgroundImage']);
+      allow update: if request.auth.uid == userId && request.writeFields.hasAny(['profilePicture', 'fullName', 'bio', 'backgroundImage', 'removeBackgroundImage']);
       // Anyone can update ONLY the streak field.
       allow update: if request.auth != null && request.writeFields.hasOnly(['streak']);
 

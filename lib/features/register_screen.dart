@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -181,28 +182,28 @@ class _RegisterScreenState extends State<RegisterScreen>
                         const SizedBox(height: 32),
 
                         // Glass Card
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                (isDarkMode ? Colors.white : Colors.black)
-                                    .withValues(alpha: 0.08),
-                                (isDarkMode ? Colors.white : Colors.black)
-                                    .withValues(alpha: 0.04),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: (isDarkMode ? Colors.white : Colors.black)
+                        GlassmorphicContainer(
+                          width: double.infinity,
+                          height: _role == 'student' ? 580 : 640,
+                          blur: 20,
+                          borderRadius: 24,
+                          linearGradient: LinearGradient(
+                            colors: [
+                              (isDarkMode ? Colors.white : Colors.black)
                                   .withValues(alpha: 0.12),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 30,
-                                offset: const Offset(0, 10),
-                              ),
+                              (isDarkMode ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.1),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          border: 1,
+                          borderGradient: LinearGradient(
+                            colors: [
+                              (isDarkMode ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.2),
+                              (isDarkMode ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.2),
                             ],
                           ),
                           child: Column(
@@ -538,6 +539,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             horizontal: 16,
             vertical: 16,
           ),
+          errorStyle: const TextStyle(height: 0, fontSize: 0),
           errorBorder: InputBorder.none,
           focusedErrorBorder: InputBorder.none,
         ),

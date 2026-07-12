@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -169,7 +168,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('assignment')
+          .collection('assignments')
           .where('level', isEqualTo: user.level)
           .orderBy('createdAt', descending: true)
           .snapshots(),
@@ -866,6 +865,72 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
     );
   }
 
+  Future<Map<String, String>?> _uploadAssignmentFile(
+    BuildContext context,
+    Function(bool) setLoading,
+  ) async {
+    setLoading(true);
+    try {
+      final user = Provider.of<AuthService>(context, listen: false).currentUser;
+      if (user == null) {
+        throw Exception("User not logged in");
+      }
+
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return null;
+      }
+
+      final platformFile = result.files.single;
+      final fileName = platformFile.name;
+      final fileBytes = platformFile.bytes;
+
+      if (fileBytes == null) {
+        throw Exception('Unable to read the selected file');
+      }
+
+      final sanitizedFileName = fileName.replaceAll(
+        RegExp(r'[^a-zA-Z0-9._-]'),
+        '_',
+      );
+      final safeLevel = (user.level ?? 'unknown').toString().replaceAll(
+        RegExp(r'[^a-zA-Z0-9._-]'),
+        '_',
+      );
+      final storagePath =
+          'assignments/level_$safeLevel/${DateTime.now().millisecondsSinceEpoch}_$sanitizedFileName';
+
+      final ref = FirebaseStorage.instance.ref().child(storagePath);
+      final metadata = SettableMetadata(contentType: _getContentType(fileName));
+
+      await ref.putData(fileBytes, metadata);
+      final downloadUrl = await ref.getDownloadURL();
+
+      return {'fileUrl': downloadUrl, 'fileName': fileName};
+    } catch (e, stackTrace) {
+      debugPrint('Assignment upload failed: $e');
+      debugPrint(stackTrace.toString());
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading file: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return null;
+    } finally {
+      if (context.mounted) {
+        setLoading(false);
+      }
+    }
+  }
+
   void _showCreateAssignmentModal(BuildContext context) {
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
     final titleController = TextEditingController();
@@ -1079,47 +1144,18 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                               onTap: isUploading
                                   ? null
                                   : () async {
-                                      setState(() => isUploading = true);
-                                      try {
-                                        final user = Provider.of<AuthService>(
-                                          context,
-                                          listen: false,
-                                        ).currentUser;
-                                        final result = await FilePicker.platform
-                                            .pickFiles(
-                                              type: FileType.custom,
-                                              allowedExtensions: [
-                                                'pdf',
-                                                'doc',
-                                                'docx',
-                                              ],
-                                            );
-                                        if (result != null &&
-                                            result.files.isNotEmpty) {
-                                          final file = File(
-                                            result.files.single.path!,
+                                      final uploadedFile =
+                                          await _uploadAssignmentFile(
+                                            context,
+                                            (loading) => setState(
+                                              () => isUploading = loading,
+                                            ),
                                           );
-                                          final ref = FirebaseStorage.instance
-                                              .ref()
-                                              .child(
-                                                'assignments/level_${user?.level}',
-                                              )
-                                              .child(
-                                                '${DateTime.now().millisecondsSinceEpoch}_${result.files.single.name}',
-                                              );
-
-                                          await ref.putFile(file);
-                                          fileUrl = await ref.getDownloadURL();
-                                          fileName = result.files.single.name;
-                                        }
-                                      } catch (e) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(content: Text('Error: $e')),
-                                        );
-                                      } finally {
-                                        setState(() => isUploading = false);
+                                      if (uploadedFile != null) {
+                                        setState(() {
+                                          fileUrl = uploadedFile['fileUrl'];
+                                          fileName = uploadedFile['fileName'];
+                                        });
                                       }
                                     },
                               borderRadius: BorderRadius.circular(16),
@@ -1267,6 +1303,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                                             'lecturerId': user?.uid,
                                             'lecturerName': user?.fullName,
                                             'submissionCount': 0,
+                                            'submittedBy': [],
                                             'createdAt':
                                                 FieldValue.serverTimestamp(),
                                           });
@@ -1366,23 +1403,36 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx'],
+        withData: true,
       );
 
-      if (result == null) return;
+      if (result == null || result.files.isEmpty) return;
 
-      final file = File(result.files.single.path!);
-      final fileName = result.files.single.name;
+      final platformFile = result.files.single;
+      final fileName = platformFile.name;
+      final fileBytes = platformFile.bytes;
 
-      // Upload submission
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('submissions/$assignmentId/${user?.uid}')
-          .child('${DateTime.now().millisecondsSinceEpoch}_$fileName');
+      if (fileBytes == null) {
+        throw Exception('Unable to read the selected file');
+      }
 
-      await ref.putFile(file);
+      final sanitizedFileName = fileName.replaceAll(
+        RegExp(r'[^a-zA-Z0-9._-]'),
+        '_',
+      );
+      final safeUserId = (user?.uid ?? 'anonymous').replaceAll(
+        RegExp(r'[^a-zA-Z0-9._-]'),
+        '_',
+      );
+      final storagePath =
+          'submissions/$assignmentId/$safeUserId/${DateTime.now().millisecondsSinceEpoch}_$sanitizedFileName';
+
+      final ref = FirebaseStorage.instance.ref().child(storagePath);
+      final metadata = SettableMetadata(contentType: _getContentType(fileName));
+
+      await ref.putData(fileBytes, metadata);
       final url = await ref.getDownloadURL();
 
-      // Save submission
       await FirebaseFirestore.instance
           .collection('assignments')
           .doc(assignmentId)
@@ -1398,7 +1448,6 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
             'isGraded': false,
           });
 
-      // Update submission count
       await FirebaseFirestore.instance
           .collection('assignments')
           .doc(assignmentId)
@@ -1416,12 +1465,31 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Assignment submission failed: $e');
+      debugPrint(stackTrace.toString());
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error submitting: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error submitting: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
+    }
+  }
+
+  String _getContentType(String fileName) {
+    final extension = fileName.toLowerCase().split('.').lastOrNull ?? '';
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      default:
+        return 'application/octet-stream';
     }
   }
 

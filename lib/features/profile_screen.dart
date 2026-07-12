@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
@@ -227,49 +227,69 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildUserInfoSection(user, bool isDarkMode) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: (isDarkMode ? Colors.white : Colors.black).withValues(
-          alpha: 0.08,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.15,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Full Name
-          _buildInfoRow(
-            Icons.person_outline,
-            "Full Name",
-            user.fullName,
-            isDarkMode,
-          ),
-
-          const Divider(height: 24),
-
-          // Email
-          _buildInfoRow(
-            Icons.email_outlined,
-            "Email Address",
-            user.email,
-            isDarkMode,
-          ),
-
-          const Divider(height: 24),
-
-          // Role & Level
-          _buildInfoRow(
-            Icons.school_outlined,
-            "Role & Level",
-            "${user.role.toUpperCase()} • Level ${user.level}",
-            isDarkMode,
-          ),
+    return GlassmorphicContainer(
+      width: double.infinity,
+      height: 380, // Adjusted height
+      borderRadius: 24,
+      blur: 20,
+      linearGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
         ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      border: 1,
+      borderGradient: LinearGradient(
+        colors: [
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          children: [
+            // Full Name
+            _buildInfoRow(
+              Icons.person_outline,
+              "Full Name",
+              user.fullName,
+              isDarkMode,
+            ),
+
+            const Divider(height: 24),
+
+            // Email
+            _buildInfoRow(
+              Icons.email_outlined,
+              "Email Address",
+              user.email,
+              isDarkMode,
+            ),
+
+            const Divider(height: 24),
+
+            // Role & Level
+            _buildInfoRow(
+              Icons.school_outlined,
+              "Role & Level",
+              "${user.role.toUpperCase()} • Level ${user.level}",
+              isDarkMode,
+            ),
+
+            const Divider(height: 24),
+
+            // Bio
+            _buildInfoRow(
+              Icons.article_outlined,
+              "Bio",
+              user.bio?.isNotEmpty == true ? user.bio! : "No bio yet.",
+              isDarkMode,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -324,21 +344,25 @@ class _ProfileScreenState extends State<ProfileScreen>
     // For now, showing placeholder values
     final stats = {'questions': 0, 'answers': 0, 'streak': 0};
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF00F5FF).withValues(alpha: 0.1),
-            const Color(0xFF00D4FF).withValues(alpha: 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFF00F5FF).withValues(alpha: 0.3),
-        ),
+    return GlassmorphicContainer(
+      width: double.infinity,
+      height: 100, // Adjusted height
+      borderRadius: 24,
+      blur: 20,
+      linearGradient: LinearGradient(
+        colors: [
+          const Color(0xFF00F5FF).withValues(alpha: 0.1),
+          const Color(0xFF00F5FF).withValues(alpha: 0.05),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      border: 1,
+      borderGradient: LinearGradient(
+        colors: [
+          const Color(0xFF00F5FF).withValues(alpha: 0.2),
+          const Color(0xFF00F5FF).withValues(alpha: 0.2),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -414,45 +438,56 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildChangeBackgroundButton(bool isDarkMode) {
     return GestureDetector(
       onTap: _isUploadingBackground ? null : _uploadBackgroundImage,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.08,
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: (isDarkMode ? Colors.white : Colors.black).withValues(
-              alpha: 0.15,
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_isUploadingBackground)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00F5FF)),
-                ),
-              )
-            else
-              const Icon(Icons.image_outlined, color: Color(0xFF00F5FF)),
-            const SizedBox(width: 12),
-            Text(
-              _isUploadingBackground
-                  ? "Uploading..."
-                  : "Change Background Image",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: isDarkMode ? Colors.white : Colors.black87,
-              ),
-            ),
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 60, // Adjusted height
+        borderRadius: 24,
+        blur: 20,
+        linearGradient: LinearGradient(
+          colors: [
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: 1,
+        borderGradient: LinearGradient(
+          colors: [
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          ],
+        ),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_isUploadingBackground)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF00F5FF),
+                    ),
+                  ),
+                )
+              else
+                const Icon(Icons.image_outlined, color: Color(0xFF00F5FF)),
+              const SizedBox(width: 12),
+              Text(
+                _isUploadingBackground
+                    ? "Uploading..."
+                    : "Change Background Image",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -460,53 +495,89 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Widget _buildAccountActionsSection(AuthService auth, bool isDarkMode) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: (isDarkMode ? Colors.white : Colors.black).withValues(
-          alpha: 0.08,
+      margin: const EdgeInsets.only(top: 30),
+      child: GlassmorphicContainer(
+        width: double.infinity,
+        height: 480, // Adjusted height
+        borderRadius: 24,
+        blur: 20,
+        linearGradient: LinearGradient(
+          colors: [
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: (isDarkMode ? Colors.white : Colors.black).withValues(
-            alpha: 0.15,
+        border: 1,
+        borderGradient: LinearGradient(
+          colors: [
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              _buildActionItem(
+                Icons.edit_outlined,
+                "Edit Profile",
+                "Update your name and bio",
+                isDarkMode,
+                onTap: () => _showEditProfileDialog(),
+                destructiveColor: Colors.blue,
+              ),
+              const Divider(height: 24),
+              _buildActionItem(
+                Icons.help_outline,
+                "Help & Support",
+                "Get help or contact support",
+                isDarkMode,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Help & Support coming soon!"),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 24),
+              _buildActionItem(
+                Icons.privacy_tip_outlined,
+                "Privacy Policy",
+                "Read our privacy policy",
+                isDarkMode,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Privacy Policy coming soon!"),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 24),
+              _buildActionItem(
+                Icons.logout,
+                "Sign Out",
+                "Log out of your account",
+                isDarkMode,
+                isDestructive: true,
+                onTap: () => _showSignOutDialog(auth),
+              ),
+              const Divider(height: 24),
+              _buildActionItem(
+                Icons.hide_image_outlined,
+                "Remove Background",
+                "Revert to the default background",
+                isDarkMode,
+                onTap: () => _showRemoveBackgroundDialog(),
+                isDestructive: true,
+                destructiveColor: Colors.orange,
+              ),
+            ],
           ),
         ),
-      ),
-      child: Column(
-        children: [
-          _buildActionItem(
-            Icons.help_outline,
-            "Help & Support",
-            "Get help or contact support",
-            isDarkMode,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Help & Support coming soon!")),
-              );
-            },
-          ),
-          const Divider(height: 24),
-          _buildActionItem(
-            Icons.privacy_tip_outlined,
-            "Privacy Policy",
-            "Read our privacy policy",
-            isDarkMode,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Privacy Policy coming soon!")),
-              );
-            },
-          ),
-          const Divider(height: 24),
-          _buildActionItem(
-            Icons.logout,
-            "Sign Out",
-            "Log out of your account",
-            isDarkMode,
-            isDestructive: true,
-            onTap: () => _showSignOutDialog(auth),
-          ),
-        ],
       ),
     );
   }
@@ -517,6 +588,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     String subtitle,
     bool isDarkMode, {
     required VoidCallback onTap,
+    Color? destructiveColor,
     bool isDestructive = false,
   }) {
     return Material(
@@ -526,13 +598,18 @@ class _ProfileScreenState extends State<ProfileScreen>
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: (isDestructive ? Colors.red : const Color(0xFF00F5FF))
-                .withValues(alpha: 0.15),
+            color:
+                (isDestructive
+                        ? (destructiveColor ?? Colors.red)
+                        : const Color(0xFF00F5FF))
+                    .withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             icon,
-            color: isDestructive ? Colors.red : const Color(0xFF00F5FF),
+            color: isDestructive
+                ? (destructiveColor ?? Colors.red)
+                : const Color(0xFF00F5FF),
             size: 24,
           ),
         ),
@@ -540,7 +617,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           title,
           style: TextStyle(
             fontWeight: FontWeight.w600,
-            color: isDestructive
+            color: isDestructive && destructiveColor == null
                 ? Colors.red
                 : (isDarkMode ? Colors.white : Colors.black87),
           ),
@@ -569,11 +646,29 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
 
     if (image != null) {
+      // --- File Size Validation ---
+      final int fileSize = await image.length(); // size in bytes
+      const int maxSizeInBytes = 3 * 1024 * 1024; // 2 MB
+
+      if (fileSize > maxSizeInBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Image is too large. Please select an image under 2MB.',
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
       setState(() => _isUploading = true);
 
       try {
         final auth = Provider.of<AuthService>(context, listen: false);
-        final imageBytes = await File(image.path).readAsBytes();
+        final imageBytes = await image.readAsBytes();
         final base64Image = base64Encode(imageBytes);
         await auth.updateProfilePicture(base64Image);
 
@@ -604,18 +699,33 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _uploadBackgroundImage() async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80, // Higher quality for background
-      maxWidth: 1920, // Larger size for background
-    );
+    final image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
+      // --- File Size Validation ---
+      final int fileSize = await image.length(); // size in bytes
+      const int maxSizeInBytes = 3 * 1024 * 1024; // 3 MB
+
+      if (fileSize > maxSizeInBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Image is too large. Please select an image under 3MB.',
+              ),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
       setState(() => _isUploadingBackground = true);
 
       try {
         final auth = Provider.of<AuthService>(context, listen: false);
-        final imageBytes = await File(image.path).readAsBytes();
+        final imageBytes = await image.readAsBytes();
         final base64Image = base64Encode(imageBytes);
         await auth.updateBackgroundImage(base64Image);
 
@@ -668,6 +778,134 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ],
       ),
+    );
+  }
+
+  void _showRemoveBackgroundDialog() {
+    // Capture the context that is safe to use across async gaps.
+    final scaffoldContext = context;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Remove Background"),
+        content: const Text(
+          "Are you sure you want to remove your background image?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); // Close the dialog first
+              try {
+                final auth = Provider.of<AuthService>(
+                  scaffoldContext,
+                  listen: false,
+                );
+                await auth.updateBackgroundImage(''); // Send empty string
+                if (scaffoldContext.mounted) {
+                  ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                    const SnackBar(
+                      content: Text("Background removed successfully!"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (scaffoldContext.mounted) {
+                  ScaffoldMessenger.of(scaffoldContext).showSnackBar(
+                    SnackBar(content: Text("Failed to remove background: $e")),
+                  );
+                }
+              }
+            },
+            child: const Text("Remove"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProfileDialog() {
+    final auth = Provider.of<AuthService>(context, listen: false);
+    final user = auth.currentUser;
+    if (user == null) return;
+
+    final nameController = TextEditingController(text: user.fullName);
+    final bioController = TextEditingController(text: user.bio);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text("Edit Profile"),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: "Full Name",
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter your full name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: bioController,
+                  decoration: const InputDecoration(
+                    labelText: "Bio",
+                    hintText: "Tell us a little about yourself",
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  await auth.updateUserProfile(
+                    fullName: nameController.text.trim(),
+                    bio: bioController.text.trim(),
+                  );
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Profile updated successfully!"),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
     );
   }
 }

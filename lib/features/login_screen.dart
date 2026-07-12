@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import 'package:glassmorphism/glassmorphism.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -75,8 +76,8 @@ class _LoginScreenState extends State<LoginScreen>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                const Color.fromARGB(255, 49, 48, 48).withValues(alpha: 0.4),
-                const Color.fromARGB(255, 146, 142, 142).withValues(alpha: 0.8),
+                const Color.fromARGB(255, 2, 2, 2).withValues(alpha: 0.4),
+                const Color.fromARGB(255, 84, 83, 83).withValues(alpha: 0.8),
               ],
             ),
           ),
@@ -142,28 +143,24 @@ class _LoginScreenState extends State<LoginScreen>
                       const SizedBox(height: 50),
 
                       // Glass Card
-                      Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.white.withValues(alpha: 0.12),
-                              Colors.white.withValues(alpha: 0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                              offset: const Offset(0, 10),
-                            ),
+                      GlassmorphicContainer(
+                        width: double.infinity,
+                        height: 250,
+                        borderRadius: 30,
+                        blur: 20,
+                        linearGradient: LinearGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.12),
+                            Colors.white.withValues(alpha: 0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        border: 1,
+                        borderGradient: LinearGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.2),
+                            Colors.white.withValues(alpha: 0.2),
                           ],
                         ),
                         child: Column(
@@ -190,10 +187,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     color: Color(0xFF00F5FF),
                                   ),
                                   border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
+                                  contentPadding: const EdgeInsets.all(16),
                                 ),
                               ),
                             ),
@@ -236,10 +230,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     ),
                                   ),
                                   border: InputBorder.none,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
+                                  contentPadding: const EdgeInsets.all(16),
                                 ),
                               ),
                             ),

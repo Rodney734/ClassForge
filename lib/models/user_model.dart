@@ -8,6 +8,7 @@ class AppUser {
   final int streak;
   final String? profilePicture;
   final String? backgroundImage;
+  final String? bio;
 
   AppUser({
     required this.uid,
@@ -19,6 +20,7 @@ class AppUser {
     this.studentId,
     this.profilePicture,
     this.backgroundImage,
+    this.bio,
   });
 
   factory AppUser.fromMap(Map<String, dynamic> map) {
@@ -31,6 +33,7 @@ class AppUser {
       streak: map['streak'] ?? 0,
       profilePicture: map['profilePicture'],
       backgroundImage: map['backgroundImage'],
+      bio: map['bio'],
     );
   }
 

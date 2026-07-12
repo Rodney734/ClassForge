@@ -880,7 +880,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "Need more help? Contact your lecturer or support@classforge.com",
+                  "Need more help? Contact your lecturer or rodenybowa11.com",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12),
                 ),
