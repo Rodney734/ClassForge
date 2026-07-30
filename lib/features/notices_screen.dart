@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
+import '../services/notice_repository.dart';
 
 class NoticesScreen extends StatefulWidget {
   final VoidCallback? onBack;
@@ -17,6 +18,7 @@ class NoticesScreen extends StatefulWidget {
 class _NoticesScreenState extends State<NoticesScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  final NoticeRepository _noticeRepository = NoticeRepository();
 
   @override
   void initState() {
@@ -53,13 +55,16 @@ class _NoticesScreenState extends State<NoticesScreen>
             // Notices List
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('notices')
-                    .where('level', isEqualTo: user?.level ?? 4)
-                    .orderBy('timestamp', descending: true)
-                    .snapshots(),
+                stream: user == null
+                    ? const Stream.empty()
+                    : FirebaseFirestore.instance
+                          .collection('notices')
+                          .where('level', isEqualTo: user.level)
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
                     return const Center(
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(

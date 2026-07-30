@@ -1,90 +1,149 @@
+import 'dart:io';
+
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'core/theme/app_theme.dart';
-import 'features/login_screen.dart';
-import 'features/home_screen.dart';
-import 'services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
-import 'services/notification_service.dart';
+import 'features/auth/auth_gate.dart';
+import 'features/login_screen.dart';
+import 'features/register_screen.dart';
+import 'features/multi_step_register_screen.dart';
+import 'services/auth_service.dart';
+import 'services/sync_manager.dart';
+import 'utils/theme.dart';
+
+// Global notifier to manage the app's theme (false = light, true = dark).
+final themeNotifier = ValueNotifier<bool>(false);
+final wallpaperNotifier = ValueNotifier<String?>(null);
+final fontScaleNotifier = ValueNotifier<double>(1.0);
+
+const _wallpaperPathKey = 'wallpaper_path';
+const _fontScaleKey = 'font_scale';
 
 void main() async {
+  // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
 
+  final preferences = await SharedPreferences.getInstance();
+  wallpaperNotifier.value = preferences.getString(_wallpaperPathKey);
+  fontScaleNotifier.value = preferences.getDouble(_fontScaleKey) ?? 1.0;
+
+  // Initialize Firebase with generated options
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Disable persistence to reduce noise and avoid IndexedDB interop crashes during debugging
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: false,
+  final syncManager = SyncManager();
+  await syncManager.syncPendingActions();
+
+  // Wrap the app in the provider here, AFTER Firebase has been initialized.
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (context) => AuthService())],
+      child: const MyApp(),
+    ),
   );
-
-  await NotificationService().initialize();
-
-  runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  bool _isDarkMode = true;
-
-  void _toggleTheme() {
-    setState(() {
-      _isDarkMode = !_isDarkMode;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
-        // Add ThemeProvider if you want to use Provider for theme
-      ],
-      child: MaterialApp(
-        title: 'ClassForge',
-        debugShowCheckedModeBanner: false,
-        theme: _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
-        home: AuthWrapper(toggleTheme: _toggleTheme, isDarkMode: _isDarkMode),
-        // In your main.dart, add this to MaterialApp:
-        builder: (context, child) {
-          return MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              // Prevent keyboard from causing overflow
-              viewInsets: EdgeInsets.zero,
-            ),
-            child: child!,
-          );
-        },
-      ),
+    // Listens to theme changes and rebuilds the MaterialApp.
+    return ValueListenableBuilder<bool>(
+      valueListenable: themeNotifier,
+      builder: (context, isDarkMode, child) {
+        return ValueListenableBuilder<String?>(
+          valueListenable: wallpaperNotifier,
+          builder: (context, wallpaperPath, child) {
+            return ValueListenableBuilder<double>(
+              valueListenable: fontScaleNotifier,
+              builder: (context, fontScale, child) {
+                return MaterialApp(
+                  title: 'ClassForge',
+                  theme: lightTheme,
+                  darkTheme: darkTheme,
+                  themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+                  debugShowCheckedModeBanner: false,
+                  locale: const Locale('en'),
+                  builder: (context, app) {
+                    final mediaQuery = MediaQuery.of(context);
+                    return MediaQuery(
+                      data: mediaQuery.copyWith(
+                        textScaler: TextScaler.linear(fontScale),
+                      ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ColoredBox(
+                            color: isDarkMode
+                                ? Colors.black
+                                : Colors.grey[100]!,
+                          ),
+                          if (wallpaperPath != null)
+                            Image.file(
+                              File(wallpaperPath),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const SizedBox.shrink(),
+                            ),
+                          ?app,
+                        ],
+                      ),
+                    );
+                  },
+                  home: const AuthGate(),
+                  routes: {
+                    '/login': (context) => const LoginScreen(),
+                    '/register': (context) => const MultiStepRegisterScreen(),
+                    '/register-old': (context) => const RegisterScreen(),
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
-  final VoidCallback toggleTheme;
-  final bool isDarkMode;
+Future<void> saveWallpaper(String sourcePath) async {
+  final directory = await getApplicationDocumentsDirectory();
+  final extension = sourcePath.contains('.')
+      ? sourcePath.substring(sourcePath.lastIndexOf('.'))
+      : '.jpg';
+  final destination = File(
+    '${directory.path}/classforge_wallpaper${extension.toLowerCase()}',
+  );
 
-  const AuthWrapper({
-    super.key,
-    required this.toggleTheme,
-    required this.isDarkMode,
-  });
+  if (await destination.exists()) {
+    await destination.delete();
+  }
+  await File(sourcePath).copy(destination.path);
 
-  @override
-  Widget build(BuildContext context) {
-    final auth = Provider.of<AuthService>(context);
+  final preferences = await SharedPreferences.getInstance();
+  await preferences.setString(_wallpaperPathKey, destination.path);
+  wallpaperNotifier.value = destination.path;
+}
 
-    if (auth.currentUser == null) {
-      return const LoginScreen();
-    } else {
-      return HomeScreen(toggleTheme: toggleTheme, isDarkMode: isDarkMode);
+Future<void> removeWallpaper() async {
+  final path = wallpaperNotifier.value;
+  if (path != null) {
+    final file = File(path);
+    if (await file.exists()) {
+      await file.delete();
     }
   }
+
+  final preferences = await SharedPreferences.getInstance();
+  await preferences.remove(_wallpaperPathKey);
+  wallpaperNotifier.value = null;
+}
+
+Future<void> saveFontScale(double newScale) async {
+  final preferences = await SharedPreferences.getInstance();
+  await preferences.setDouble(_fontScaleKey, newScale);
+  fontScaleNotifier.value = newScale;
 }

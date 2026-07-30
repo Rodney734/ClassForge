@@ -32,7 +32,7 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _notifications.initialize(settings);
+    await _notifications.initialize(settings: settings);
   }
 
   // Show notification for scheduled class
@@ -63,10 +63,10 @@ class NotificationService {
     );
 
     await _notifications.show(
-      0,
-      '📚 New Class Scheduled!',
-      '$className with $lecturerName at $time',
-      details,
+      id: 0,
+      title: '📚 New Class Scheduled!',
+      body: '$className with $lecturerName at $time',
+      notificationDetails: details,
     );
   }
 
@@ -98,10 +98,10 @@ class NotificationService {
     );
 
     await _notifications.show(
-      1,
-      '🔴 LIVE CLASS STARTED!',
-      '$className with $lecturerName is now live! Tap to join.',
-      details,
+      id: 1,
+      title: '🔴 LIVE CLASS STARTED!',
+      body: '$className with $lecturerName is now live! Tap to join.',
+      notificationDetails: details,
     );
   }
 
@@ -135,14 +135,13 @@ class NotificationService {
       );
 
       await _notifications.zonedSchedule(
-        2,
-        '⏰ Class Starting Soon!',
-        '$className with $lecturerName starts in 5 minutes!',
-        tz.TZDateTime.from(scheduledTime, tz.local),
-        details,
-        androidAllowWhileIdle: true,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
+        id: 2,
+        scheduledDate: tz.TZDateTime.from(scheduledTime, tz.local),
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        title: '⏰ Class Starting Soon!',
+        body: '$className with $lecturerName starts in 5 minutes!',
+        payload: null,
       );
     }
   }

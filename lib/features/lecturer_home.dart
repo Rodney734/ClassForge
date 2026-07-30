@@ -1,29 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:glassmorphism/glassmorphism.dart';
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/course_model.dart';
 import '../services/auth_service.dart';
+import '../services/course_repository.dart';
 import 'live_class_screen.dart';
 import 'notices_screen.dart';
 import 'assignments_screen.dart';
 import 'discover_screen.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
-import 'schedule_class_screen.dart';
 import 'attendance_monitor_screen.dart';
 import 'create_attendance_screen.dart';
 import '../services/student_id_management_screen.dart';
 
 class LecturerHome extends StatefulWidget {
-  final VoidCallback toggleTheme;
-  final bool isDarkMode;
-
-  const LecturerHome({
-    super.key,
-    required this.toggleTheme,
-    required this.isDarkMode,
-  });
+  const LecturerHome({super.key});
 
   @override
   State<LecturerHome> createState() => _LecturerHomeState();
@@ -42,14 +35,11 @@ class _LecturerHomeState extends State<LecturerHome>
   void initState() {
     super.initState();
     _pages = [
-      LecturerDashboardContent(
-        toggleTheme: widget.toggleTheme,
-        onActionSelected: _setSubPage,
-      ),
+      LecturerDashboardContent(onActionSelected: _setSubPage),
       const ChatScreen(),
       const SizedBox(), // Live handled by floating button
       const DiscoverScreen(),
-      ProfileScreen(toggleTheme: widget.toggleTheme),
+      const ProfileScreen(),
     ];
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 500),
@@ -59,6 +49,8 @@ class _LecturerHomeState extends State<LecturerHome>
   }
 
   void _setSubPage(Widget? page) {
+    if (!mounted) return;
+
     setState(() {
       _activeSubPage = page;
       if (page != null) _currentIndex = 0;
@@ -73,53 +65,82 @@ class _LecturerHomeState extends State<LecturerHome>
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = widget.isDarkMode;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final auth = Provider.of<AuthService>(context);
     final user = auth.currentUser;
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    return Container(
-      decoration: BoxDecoration(
-        image:
-            user?.backgroundImage != null && user!.backgroundImage!.isNotEmpty
-            ? DecorationImage(
-                image: MemoryImage(base64Decode(user.backgroundImage!)),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  (isDarkMode ? Colors.black : Colors.white).withValues(
-                    alpha: 0.5,
-                  ),
-                  BlendMode.darken,
-                ),
-              )
-            : null,
-        color: isDarkMode ? Colors.black : Colors.grey[200],
+    return Scaffold(
+      // Ensures the body shrinks to make room for the keyboard
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Colors.transparent,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _currentIndex == 0 && _activeSubPage != null
+            ? _activeSubPage!
+            : _pages[_currentIndex],
       ),
-      child: Scaffold(
-        // Ensures the body shrinks to make room for the keyboard
-        resizeToAvoidBottomInset: true,
-        backgroundColor: Colors.transparent,
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _currentIndex == 0 && _activeSubPage != null
-              ? _activeSubPage!
-              : _pages[_currentIndex],
+      // Hide the bottom nav when typing to give the flexible text box more room
+      bottomNavigationBar: isKeyboardVisible
+          ? const SizedBox.shrink()
+          : _buildModernBottomNav(isDarkMode),
+      floatingActionButton: isKeyboardVisible
+          ? null
+          : FloatingActionButton(
+              onPressed: _startHostedLiveClass,
+              backgroundColor: Colors.redAccent,
+              elevation: 10,
+              child: const Icon(Icons.live_tv, color: Colors.white, size: 32),
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+    );
+  }
+
+  Future<void> _startHostedLiveClass() async {
+    final controller = TextEditingController();
+    final className = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Name your online class'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Class name',
+            hintText: 'e.g. Financial Accounting I',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              Navigator.pop(dialogContext, value.trim());
+            }
+          },
         ),
-        // Hide the bottom nav when typing to give the flexible text box more room
-        bottomNavigationBar: isKeyboardVisible
-            ? const SizedBox.shrink()
-            : _buildModernBottomNav(isDarkMode),
-        floatingActionButton: isKeyboardVisible
-            ? null
-            : FloatingActionButton(
-                onPressed: () => _setSubPage(
-                  LiveClassScreen(onLeave: () => _setSubPage(null)),
-                ),
-                backgroundColor: Colors.redAccent,
-                elevation: 10,
-                child: const Icon(Icons.live_tv, color: Colors.white, size: 32),
-              ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                Navigator.pop(dialogContext, controller.text.trim());
+              }
+            },
+            child: const Text('Start Class'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (!mounted || className == null || className.isEmpty) return;
+    _setSubPage(
+      LiveClassScreen(
+        className: className,
+        isHost: true,
+        onLeave: () => _setSubPage(null),
       ),
     );
   }
@@ -239,14 +260,9 @@ class _LecturerHomeState extends State<LecturerHome>
 
 // ==================== Lecturer Dashboard Content ====================
 class LecturerDashboardContent extends StatefulWidget {
-  final VoidCallback toggleTheme;
   final Function(Widget?) onActionSelected;
 
-  const LecturerDashboardContent({
-    super.key,
-    required this.toggleTheme,
-    required this.onActionSelected,
-  });
+  const LecturerDashboardContent({super.key, required this.onActionSelected});
 
   @override
   State<LecturerDashboardContent> createState() =>
@@ -256,6 +272,12 @@ class LecturerDashboardContent extends StatefulWidget {
 class _LecturerDashboardContentState extends State<LecturerDashboardContent>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  Stream<QuerySnapshot>? _studentCountStream;
+  Stream<QuerySnapshot>? _noticeCountStream;
+  Stream<QuerySnapshot>? _activityStream;
+  final CourseRepository _courseRepository = CourseRepository();
+  List<Course> _courses = [];
+  bool _isLoadingCourses = true;
 
   @override
   void initState() {
@@ -265,6 +287,37 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
       vsync: this,
     );
     _animationController.forward();
+    _loadCourses();
+    final user = Provider.of<AuthService>(context, listen: false).currentUser;
+    if (user != null) {
+      _studentCountStream = FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'student')
+          .where('level', isEqualTo: user.level)
+          .snapshots();
+      _noticeCountStream = FirebaseFirestore.instance
+          .collection('notices')
+          .where('lecturerId', isEqualTo: user.uid)
+          .snapshots();
+    }
+  }
+
+  Future<void> _loadCourses() async {
+    final user = Provider.of<AuthService>(context, listen: false).currentUser;
+    if (user == null) {
+      if (mounted) {
+        setState(() => _isLoadingCourses = false);
+      }
+      return;
+    }
+
+    final courses = await _courseRepository.getCoursesForLecturer(user.uid);
+    if (!mounted) return;
+
+    setState(() {
+      _courses = courses;
+      _isLoadingCourses = false;
+    });
   }
 
   @override
@@ -304,14 +357,15 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
               _buildStatsSection(user, isDarkMode),
               const SizedBox(height: 30),
 
+              // Course cache summary
+              if (!_isLoadingCourses)
+                _buildCourseSummary(isDarkMode, isDesktop),
+              const SizedBox(height: 20),
+
               // Quick Actions Section
               _buildQuickActionsHeader(isDarkMode, isDesktop, isTablet),
               const SizedBox(height: 12),
               _buildQuickActionsGrid(isDarkMode, isDesktop, isTablet),
-              const SizedBox(height: 25),
-
-              // Upcoming Scheduled Classes
-              _buildUpcomingClassesSection(isDarkMode),
               const SizedBox(height: 25),
 
               // Recent Activity Section
@@ -375,13 +429,6 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
         const SizedBox(width: 12),
         Row(
           children: [
-            IconButton(
-              onPressed: widget.toggleTheme,
-              icon: Icon(
-                isDarkMode ? Icons.light_mode : Icons.dark_mode,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -461,11 +508,7 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
 
   Widget _buildStudentCountStream(user) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: 'student')
-          .where('level', isEqualTo: user?.level)
-          .snapshots(),
+      stream: _studentCountStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Text("...");
         return Text(snapshot.data!.docs.length.toString());
@@ -475,10 +518,7 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
 
   Widget _buildNoticeCountStream(user) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('notices')
-          .where('lecturerId', isEqualTo: user?.uid)
-          .snapshots(),
+      stream: _noticeCountStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Text("...");
         return Text(snapshot.data!.docs.length.toString());
@@ -535,6 +575,102 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
     );
   }
 
+  Widget _buildCourseSummary(bool isDarkMode, bool isDesktop) {
+    final courseCount = _courses.length;
+
+    return InkWell(
+      onTap: _showTeachingCoursesDialog,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: (isDarkMode ? Colors.white : Colors.black).withValues(
+            alpha: 0.06,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.school_outlined, color: Colors.redAccent),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'My teaching courses',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontSize: isDesktop ? 18 : 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    courseCount == 0
+                        ? 'No courses cached yet. Tap to view details.'
+                        : '$courseCount courses available offline',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.redAccent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTeachingCoursesDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('My teaching courses'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: _courses.isEmpty
+              ? const Text(
+                  'No teaching courses were found. Check that your account is assigned to courses and refresh the app while online.',
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _courses.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final course = _courses[index];
+                    return ListTile(
+                      leading: const Icon(Icons.school_outlined),
+                      title: Text(course.name),
+                      subtitle: Text(
+                        '${course.code} • ${course.creditHours} credit hours • ${course.semester} semester',
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickActionsHeader(
     bool isDarkMode,
     bool isDesktop,
@@ -565,6 +701,8 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
         final cardWidth = constraints.maxWidth;
         final crossAxisCount = cardWidth < 500 ? 2 : (cardWidth < 800 ? 3 : 4);
 
+        final actions = _buildQuickActionCards(isDarkMode, isDesktop, isTablet);
+
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -574,15 +712,8 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
             mainAxisSpacing: 14,
             childAspectRatio: 1.2,
           ),
-          itemCount: 7,
-          itemBuilder: (context, index) {
-            final actions = _buildQuickActionCards(
-              isDarkMode,
-              isDesktop,
-              isTablet,
-            );
-            return actions[index];
-          },
+          itemCount: actions.length,
+          itemBuilder: (context, index) => actions[index],
         );
       },
     );
@@ -595,24 +726,23 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
   ) {
     final actions = [
       {
-        'icon': Icons.schedule_outlined,
-        'title': 'Schedule Class',
-        'color': Colors.redAccent,
-        'onTap': () => widget.onActionSelected(const ScheduleClassScreen()),
-      },
-
-      {
         'icon': Icons.qr_code_scanner,
         'title': 'Start Attendance',
         'color': Colors.purple,
-        'onTap': () => widget.onActionSelected(const CreateAttendanceScreen()),
+        'onTap': () => widget.onActionSelected(
+          CreateAttendanceScreen(onBack: () => widget.onActionSelected(null)),
+        ),
       },
       {
         'icon': Icons.live_tv,
         'title': 'Start Live',
         'color': Colors.orange,
         'onTap': () => widget.onActionSelected(
-          LiveClassScreen(onLeave: () => widget.onActionSelected(null)),
+          // Pass isHost: true
+          LiveClassScreen(
+            isHost: true,
+            onLeave: () => widget.onActionSelected(null),
+          ),
         ),
       },
       {
@@ -899,15 +1029,7 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ScheduleClassScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
                         foregroundColor: Colors.white,
@@ -1059,239 +1181,6 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
     );
   }
 
-  Widget _buildUpcomingClassesSection(bool isDarkMode) {
-    final user = Provider.of<AuthService>(context).currentUser;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.calendar_today,
-                color: Colors.redAccent,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              "Upcoming Scheduled Classes",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black87,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('scheduled_classes')
-              .where('lecturerId', isEqualTo: user?.uid)
-              .orderBy('scheduledDate', descending: false)
-              .limit(3)
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(30),
-                decoration: BoxDecoration(
-                  color: (isDarkMode ? Colors.white : Colors.black).withValues(
-                    alpha: 0.08,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: (isDarkMode ? Colors.white : Colors.black)
-                        .withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Icon(Icons.calendar_today, size: 60, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                        "No scheduled classes yet",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: isDarkMode ? Colors.white54 : Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ScheduleClassScreen(),
-                          ),
-                        ),
-                        icon: const Icon(Icons.add),
-                        label: const Text("Schedule a Class"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: snapshot.data!.docs.length,
-              itemBuilder: (context, index) {
-                final doc = snapshot.data!.docs[index];
-                final data = doc.data() as Map<String, dynamic>;
-                return _buildClassCard(data, isDarkMode, doc.id);
-              },
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildClassCard(
-    Map<String, dynamic> data,
-    bool isDarkMode,
-    String classId,
-  ) {
-    final scheduledDate =
-        (data['scheduledDate'] as Timestamp?)?.toDate() ?? DateTime.now();
-    final isPast = scheduledDate.isBefore(DateTime.now());
-
-    return Container(
-      // Using a standard container here as Glassmorphic might be too busy for list items
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: (isDarkMode ? Colors.white : Colors.black).withValues(
-          alpha: 0.08,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isPast
-              ? Colors.grey.withValues(alpha: 0.3)
-              : Colors.redAccent.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isPast
-                  ? Colors.grey.withValues(alpha: 0.2)
-                  : Colors.redAccent.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              Icons.video_library,
-              color: isPast ? Colors.grey : Colors.redAccent,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['title'] ?? 'Untitled Class',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  data['description'] ?? 'No description',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDarkMode ? Colors.white54 : Colors.black54,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.redAccent),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatDateTime(scheduledDate),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isPast ? Colors.grey : Colors.redAccent,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    if (!isPast)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          "Upcoming",
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (!isPast)
-            IconButton(
-              icon: const Icon(Icons.qr_code_scanner, color: Colors.purple),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => LecturerAttendanceScreen(
-                      sessionId: classId,
-                      courseName: 'Course',
-                      lectureTitle: data['title'] ?? 'Class',
-                    ),
-                  ),
-                );
-              },
-              tooltip: 'Take Attendance',
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildRecentActivitySection(bool isDarkMode) {
     final user = Provider.of<AuthService>(context).currentUser;
 
@@ -1325,12 +1214,7 @@ class _LecturerDashboardContentState extends State<LecturerDashboardContent>
         ),
         const SizedBox(height: 12),
         StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('activities')
-              .where('lecturerId', isEqualTo: user?.uid)
-              .orderBy('timestamp', descending: true)
-              .limit(5)
-              .snapshots(),
+          stream: _activityStream,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());

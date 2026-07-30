@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_background/flutter_background.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:provider/provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../services/auth_service.dart';
 import '../services/live_class_service.dart';
 import '../services/livekit_service.dart';
@@ -15,7 +17,7 @@ class LiveClassScreen extends StatefulWidget {
 
   const LiveClassScreen({
     super.key,
-    this.className = "Mobile Development",
+    this.className,
     this.isHost = false,
     this.onLeave,
   });
@@ -73,6 +75,7 @@ class _LiveClassScreenState extends State<LiveClassScreen>
 
   @override
   void dispose() {
+    _isLeaving = true;
     _roomListener?.dispose();
     _room?.disconnect();
     _animationController.dispose();
@@ -84,6 +87,7 @@ class _LiveClassScreenState extends State<LiveClassScreen>
 
   Future<void> _initLiveKit() async {
     final granted = await _requestPermissions();
+    if (!mounted || _isLeaving) return;
     if (granted) {
       await _connectToLiveKit();
     } else {
@@ -139,6 +143,7 @@ class _LiveClassScreenState extends State<LiveClassScreen>
         ),
       );
     }
+    if (!mounted || _isLeaving) return false;
     return allGranted;
   }
 
@@ -203,14 +208,20 @@ class _LiveClassScreenState extends State<LiveClassScreen>
         isHost: isLecturer,
       );
 
+      if (!mounted || _isLeaving) {
+        await _room?.disconnect();
+        return;
+      }
+
       _setupListeners();
       setState(() => _isConnected = true);
       await _setupLocalTracks();
 
       if (isLecturer) {
         await LiveClassService().startLiveClass(
+          // Call the new service method
           level: level,
-          className: widget.className ?? "Mobile Application Development",
+          className: widget.className ?? "Live Class",
           lecturerId: user?.uid ?? "",
           lecturerName: user?.fullName ?? "Lecturer",
         );
@@ -242,16 +253,36 @@ class _LiveClassScreenState extends State<LiveClassScreen>
       ..on<RoomDisconnectedEvent>((event) {
         if (mounted && !_isLeaving) Navigator.pop(context);
       })
-      ..on<ParticipantConnectedEvent>((event) => setState(() {}))
-      ..on<ParticipantDisconnectedEvent>((event) => setState(() {}))
-      ..on<TrackSubscribedEvent>((event) => setState(() {}))
-      ..on<TrackUnsubscribedEvent>((event) => setState(() {}))
-      ..on<TrackMutedEvent>((event) => setState(() {}))
-      ..on<TrackUnmutedEvent>((event) => setState(() {}))
-      ..on<TrackPublishedEvent>((event) => setState(() {}))
-      ..on<TrackUnpublishedEvent>((event) => setState(() {}))
-      ..on<LocalTrackPublishedEvent>((event) => setState(() {}))
-      ..on<LocalTrackUnpublishedEvent>((event) => setState(() {}));
+      ..on<ParticipantConnectedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<ParticipantDisconnectedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<TrackSubscribedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<TrackUnsubscribedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<TrackMutedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<TrackUnmutedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<TrackPublishedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<TrackUnpublishedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<LocalTrackPublishedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      })
+      ..on<LocalTrackUnpublishedEvent>((event) {
+        if (mounted && !_isLeaving) setState(() {});
+      });
   }
 
   Future<void> _setupLocalTracks() async {
@@ -269,12 +300,14 @@ class _LiveClassScreenState extends State<LiveClassScreen>
   Future<void> _toggleMic() async {
     final newState = !_isMicOn;
     await _room?.localParticipant?.setMicrophoneEnabled(newState);
+    if (!mounted || _isLeaving) return;
     setState(() => _isMicOn = newState);
   }
 
   Future<void> _toggleCamera() async {
     final newState = !_isCameraOn;
     await _room?.localParticipant?.setCameraEnabled(newState);
+    if (!mounted || _isLeaving) return;
     setState(() => _isCameraOn = newState);
   }
 
@@ -284,10 +317,33 @@ class _LiveClassScreenState extends State<LiveClassScreen>
 
     try {
       final newState = !_isScreenSharing;
+      if (newState && lkPlatformIs(PlatformType.android)) {
+        final captureAllowed = await Helper.requestCapturePermission();
+        if (!captureAllowed) return;
+
+        final backgroundReady = await FlutterBackground.initialize(
+          androidConfig: const FlutterBackgroundAndroidConfig(
+            notificationTitle: 'ClassForge screen sharing',
+            notificationText: 'Your screen is being shared with the class.',
+            notificationImportance: AndroidNotificationImportance.normal,
+            notificationIcon: AndroidResource(
+              name: 'launcher_icon',
+              defType: 'mipmap',
+            ),
+          ),
+        );
+        if (!backgroundReady) return;
+        await FlutterBackground.enableBackgroundExecution();
+      }
       await room.localParticipant!.setScreenShareEnabled(newState);
+      if (!mounted || _isLeaving) return;
       setState(() => _isScreenSharing = newState);
     } catch (e) {
-      print("Screen share error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Screen sharing failed: $e")));
+      }
     }
   }
 
@@ -299,12 +355,20 @@ class _LiveClassScreenState extends State<LiveClassScreen>
 
     // Show floating reaction animation
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
-    await LiveClassService().sendReaction(
-      level: user?.level ?? 4,
-      reaction: reaction,
-      userId: user?.uid ?? "",
-      userName: user?.fullName ?? "User",
-    );
+    try {
+      await LiveClassService().sendReaction(
+        level: user?.level ?? 4,
+        reaction: reaction,
+        userId: user?.uid ?? "",
+        userName: user?.fullName ?? "User",
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Reaction could not be sent: $e")),
+        );
+      }
+    }
 
     // Clear reaction after 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
@@ -344,12 +408,20 @@ class _LiveClassScreenState extends State<LiveClassScreen>
     });
 
     // Send to Firestore
-    await LiveClassService().sendChatMessage(
-      level: user?.level ?? 4,
-      message: message,
-      userId: user?.uid ?? "",
-      userName: user?.fullName ?? "User",
-    );
+    try {
+      await LiveClassService().sendChatMessage(
+        level: user?.level ?? 4,
+        message: message,
+        userId: user?.uid ?? "",
+        userName: user?.fullName ?? "User",
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Message could not be sent: $e")),
+        );
+      }
+    }
   }
 
   Future<void> _leaveClass() async {
@@ -360,7 +432,9 @@ class _LiveClassScreenState extends State<LiveClassScreen>
     setState(() => _isLeaving = true);
 
     if (isLecturer) {
-      await LiveClassService().endLiveClass(level);
+      await LiveClassService().endLiveClass(
+        level: level,
+      ); // Call the new service method
     } else {
       await LiveClassService().leaveClass(
         level: level,

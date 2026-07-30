@@ -2,14 +2,13 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 // Replaced external emoji picker with a lightweight in-app grid
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
-import '../services/notification_service.dart';
 import 'dart:async';
 
 class ChatScreen extends StatefulWidget {
@@ -28,7 +27,6 @@ class _ChatScreenState extends State<ChatScreen>
   final FocusNode _focusNode = FocusNode();
 
   StreamSubscription? _typingSubscription;
-  StreamSubscription? _notificationSubscription;
 
   // Typing indicator
   Timer? _typingTimer;
@@ -38,6 +36,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   // Reply to message
   Map<String, dynamic>? _replyingTo;
+  List<Map<String, dynamic>> _localMessages = [];
 
   // Reactions
   final List<String> _availableReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -51,7 +50,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
     _animationController.forward();
     _setupTypingListeners();
-    _initPushNotifications();
+    _loadLocalMessages();
 
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
@@ -67,7 +66,6 @@ class _ChatScreenState extends State<ChatScreen>
   void dispose() {
     _typingTimer?.cancel();
     _typingSubscription?.cancel();
-    _notificationSubscription?.cancel();
     _typingTimers.forEach((key, timer) => timer.cancel());
     _typingTimers.clear();
     _animationController.dispose();
@@ -77,61 +75,19 @@ class _ChatScreenState extends State<ChatScreen>
     super.dispose();
   }
 
-  Future<void> _initPushNotifications() async {
-    final user = Provider.of<AuthService>(context, listen: false).currentUser;
-    if (user == null) return;
-
-    // Add a small delay to prevent the debugger from hanging on initial load
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    try {
-      // Initialize notification service if not already done
-      await NotificationService().initialize();
-
-      // Request permissions and get token
-      FirebaseMessaging messaging = FirebaseMessaging.instance;
-      NotificationSettings settings = await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        // Get and save token
-        final token = await messaging.getToken();
-        if (token != null) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .update({'fcmToken': token});
-        }
-      }
-    } catch (e) {
-      print("🔔 Notification Permission error: $e");
-    }
-
-    // Listen for foreground messages
-    _notificationSubscription = FirebaseMessaging.onMessage.listen((
-      RemoteMessage message,
-    ) {
-      if (message.notification != null && mounted) {
-        // Show local notification
-        NotificationService().showClassScheduledNotification(
-          className: message.notification!.title ?? 'New Message',
-          lecturerName: message.notification!.body ?? 'You have a new message',
-          time: DateTime.now().hour.toString(),
-        );
-      }
-    });
-  }
-
   void _setupTypingListeners() {
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
     if (user == null) return;
 
+    // Use course-based typing status if available, otherwise fall back to level-based
+    final courseId = user.activeCourseId;
+
     _typingSubscription = FirebaseFirestore.instance
         .collection('typing_status')
-        .where('level', isEqualTo: user.level)
+        .where(
+          courseId != null ? 'courseId' : 'level',
+          isEqualTo: courseId ?? user.level,
+        )
         .snapshots()
         .listen((snapshot) {
           for (var doc in snapshot.docs) {
@@ -161,19 +117,130 @@ class _ChatScreenState extends State<ChatScreen>
         });
   }
 
+  String _chatStorageKey(user) {
+    final room = user.activeCourseId != null
+        ? 'course_${user.activeCourseId}'
+        : 'level_${user.level}';
+    return 'chat_history_$room';
+  }
+
+  Future<void> _loadLocalMessages() async {
+    final user = Provider.of<AuthService>(context, listen: false).currentUser;
+    if (user == null) return;
+
+    final preferences = await SharedPreferences.getInstance();
+    final encodedMessages = preferences.getString(_chatStorageKey(user));
+    if (encodedMessages == null) return;
+
+    try {
+      final decoded = jsonDecode(encodedMessages) as List<dynamic>;
+      if (!mounted) return;
+      setState(() {
+        _localMessages = decoded
+            .whereType<Map>()
+            .map((message) => Map<String, dynamic>.from(message))
+            .toList();
+      });
+    } catch (_) {
+      await preferences.remove(_chatStorageKey(user));
+    }
+  }
+
+  Future<void> _cacheMessage(
+    String messageId,
+    Map<String, dynamic> data,
+  ) async {
+    final user = Provider.of<AuthService>(context, listen: false).currentUser;
+    if (user == null) return;
+
+    final normalized = Map<String, dynamic>.from(data);
+    normalized['messageId'] = messageId;
+    final rawTimestamp = normalized['timestamp'];
+    normalized['timestamp'] = rawTimestamp is Timestamp
+        ? rawTimestamp.millisecondsSinceEpoch
+        : rawTimestamp is int
+        ? rawTimestamp
+        : DateTime.now().millisecondsSinceEpoch;
+    normalized.remove('expiresAt');
+
+    final messagesById = <String, Map<String, dynamic>>{
+      for (final message in _localMessages)
+        if (message['messageId'] != null)
+          message['messageId'] as String: message,
+    };
+    messagesById[messageId] = normalized;
+    final cachedMessages = messagesById.values.toList()
+      ..sort(
+        (first, second) =>
+            (second['timestamp'] as int).compareTo(first['timestamp'] as int),
+      );
+    final limitedMessages = cachedMessages.take(200).toList();
+    final changed = jsonEncode(_localMessages) != jsonEncode(limitedMessages);
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _chatStorageKey(user),
+      jsonEncode(limitedMessages),
+    );
+    if (mounted && changed) {
+      setState(() => _localMessages = limitedMessages);
+    }
+  }
+
+  List<Map<String, dynamic>> _messagesForDisplay(
+    List<QueryDocumentSnapshot> remoteDocuments,
+  ) {
+    final messagesById = <String, Map<String, dynamic>>{
+      for (final message in _localMessages)
+        if (message['messageId'] != null)
+          message['messageId'] as String: message,
+    };
+
+    for (final document in remoteDocuments) {
+      final data = Map<String, dynamic>.from(document.data() as Map);
+      final expiresAt = data['expiresAt'];
+      if (expiresAt is Timestamp &&
+          expiresAt.toDate().isBefore(DateTime.now())) {
+        continue;
+      }
+      final rawTimestamp = data['timestamp'];
+      data['timestamp'] = rawTimestamp is Timestamp
+          ? rawTimestamp.millisecondsSinceEpoch
+          : rawTimestamp is int
+          ? rawTimestamp
+          : DateTime.now().millisecondsSinceEpoch;
+      data['messageId'] = document.id;
+      messagesById[document.id] = data;
+      _cacheMessage(document.id, data);
+    }
+
+    final messages = messagesById.values.toList()
+      ..sort(
+        (first, second) =>
+            (second['timestamp'] as int).compareTo(first['timestamp'] as int),
+      );
+    return messages;
+  }
+
   Future<void> _sendTypingStatus(bool isTyping) async {
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
     if (user == null) return;
 
+    final courseId = user.activeCourseId;
     final docRef = FirebaseFirestore.instance
         .collection('typing_status')
-        .doc('level_${user.level}_${user.uid}');
+        .doc(
+          courseId != null
+              ? 'course_${courseId}_${user.uid}'
+              : 'level_${user.level}_${user.uid}',
+        );
 
     if (isTyping) {
       await docRef.set({
         'userId': user.uid,
         'userName': user.fullName,
         'level': user.level,
+        'courseId': ?courseId,
         'isTyping': true,
         'timestamp': FieldValue.serverTimestamp(),
       });
@@ -368,6 +435,7 @@ class _ChatScreenState extends State<ChatScreen>
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 800;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -387,6 +455,12 @@ class _ChatScreenState extends State<ChatScreen>
               child: StreamBuilder<QuerySnapshot>(
                 stream: (user == null)
                     ? const Stream.empty()
+                    : user.activeCourseId != null
+                    ? FirebaseFirestore.instance
+                          .collection('messages')
+                          .where('courseId', isEqualTo: user.activeCourseId)
+                          .orderBy('timestamp', descending: true)
+                          .snapshots()
                     : FirebaseFirestore.instance
                           .collection('messages')
                           .where('level', isEqualTo: user.level)
@@ -436,7 +510,7 @@ class _ChatScreenState extends State<ChatScreen>
                     );
                   }
 
-                  final messages = snapshot.data!.docs;
+                  final messages = _messagesForDisplay(snapshot.data!.docs);
 
                   if (messages.isEmpty) {
                     return Center(
@@ -475,17 +549,8 @@ class _ChatScreenState extends State<ChatScreen>
                     ),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
-                      final doc = messages[index];
-                      final data = doc.data() as Map<String, dynamic>;
-
-                      final msg = {
-                        'messageId': doc.id,
-                        ...data,
-                        'timestamp':
-                            (data['timestamp'] as Timestamp?)
-                                ?.millisecondsSinceEpoch ??
-                            DateTime.now().millisecondsSinceEpoch,
-                      };
+                      final data = messages[index];
+                      final msg = data;
 
                       final isMe = data['senderId'] == user.uid;
 
@@ -516,8 +581,12 @@ class _ChatScreenState extends State<ChatScreen>
             if (_typingUser.isNotEmpty)
               _buildTypingIndicator(isDarkMode, _typingUser),
 
-            // Input Bar - Move this OUTSIDE of Expanded
-            _buildInputBar(user, isDarkMode, isDesktop),
+            AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.only(bottom: keyboardHeight > 0 ? 8 : 0),
+              child: _buildInputBar(user, isDarkMode, isDesktop),
+            ),
           ],
         ),
       ),
@@ -1231,7 +1300,11 @@ class _ChatScreenState extends State<ChatScreen>
       'message': messageText,
       'type': 'text',
       'level': user?.level,
+      if (user?.activeCourseId != null) 'courseId': user?.activeCourseId,
       'timestamp': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(
+        DateTime.now().add(const Duration(minutes: 10)),
+      ),
     };
 
     // Add reply data if replying to a message
@@ -1251,7 +1324,7 @@ class _ChatScreenState extends State<ChatScreen>
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: [
           'pdf',
@@ -1318,6 +1391,10 @@ class _ChatScreenState extends State<ChatScreen>
           'fileUrl': downloadUrl,
           'level': user?.level,
           'timestamp': FieldValue.serverTimestamp(),
+          'expiresAt': Timestamp.fromDate(
+            DateTime.now().add(const Duration(minutes: 10)),
+          ),
+          'filePath': ref.fullPath,
         };
 
         if (_replyingTo != null) {

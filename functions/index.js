@@ -5,113 +5,76 @@ const axios = require('axios');
 admin.initializeApp();
 
 exports.aiTutor = functions.https.onCall(async (data, context) => {
-  // Verify user is authenticated
   if (!context.auth) {
-    throw new functions.https.HttpsError(
-      'unauthenticated',
-      'User must be authenticated'
-    );
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
   }
 
-  const { message, userId, level } = data;
+  const message = String(data?.message ?? '').trim();
   const userUid = context.auth.uid;
 
-  // Rate limiting
-  const rateLimitRef = admin.firestore()
-    .collection('ai_rate_limits')
-    .doc(userUid);
-  
-  const rateLimit = await rateLimitRef.get();
-  const now = Date.now();
-  const limit = 50; // messages per hour
-  
-  if (rateLimit.exists) {
-    const data = rateLimit.data();
-    const lastReset = data.lastReset || 0;
-    const count = data.count || 0;
-    
-    if (now - lastReset > 3600000) {
-      await rateLimitRef.set({ count: 1, lastReset: now });
-    } else if (count >= limit) {
-      throw new functions.https.HttpsError(
-        'resource-exhausted',
-        'Rate limit exceeded. Please try again later.'
-      );
-    } else {
-      await rateLimitRef.update({ count: count + 1 });
-    }
-  } else {
-    await rateLimitRef.set({ count: 1, lastReset: now });
+  if (!message) {
+    throw new functions.https.HttpsError('invalid-argument', 'A message is required.');
   }
 
-  // System prompt
-  const systemPrompt = `You are ClassForge AI, an educational tutor for a student at Level ${level}. Your purpose is to help students learn academic subjects. Be patient, encouraging, and professional. Explain concepts step-by-step with clear examples. Politely decline any requests that are not related to academic subjects.`;
+  const userDoc = await admin.firestore().collection('users').doc(userUid).get();
+  const level = Number(userDoc.data()?.level ?? 0);
 
-  // Get conversation history
+  const systemPrompt = `You are ClassForge AI, an educational tutor for university students in Malawi. You are fluent in both English and Chichewa. Your purpose is to help students learn academic subjects, including programming, databases, AI, and other studies. Be patient and clear. For level ${level}, explain step-by-step using examples when helpful. If a request is unrelated to learning, politely redirect to academic help.`;
+
   const historySnapshot = await admin.firestore()
-    .collection('users').doc(userUid)
+    .collection('users')
+    .doc(userUid)
     .collection('ai_tutor_messages')
     .orderBy('timestamp', 'desc')
     .limit(10)
     .get();
 
-  const messages = [
-    { role: 'system', content: systemPrompt }
-  ];
-
-  // Add history
+  const messages = [{ role: 'system', content: systemPrompt }];
   const history = historySnapshot.docs.reverse();
   for (const doc of history) {
     const data = doc.data();
-    if (data.isUser) {
-      messages.push({ role: 'user', content: data.text });
-    } else {
-      messages.push({ role: 'assistant', content: data.text });
-    }
+    messages.push({ role: data.isUser ? 'user' : 'assistant', content: String(data.text ?? '') });
   }
 
   messages.push({ role: 'user', content: message });
 
-  // Call AI API
+  await admin.firestore().collection('users').doc(userUid).collection('ai_tutor_messages').add({
+    text: message,
+    isUser: true,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  const apiKey = process.env.MISTRAL_API_KEY || (functions.config().mistral && functions.config().mistral.api_key) || '';
+  if (!apiKey) {
+    throw new functions.https.HttpsError('internal', 'Mistral API key is not configured.');
+  }
+
   try {
-    // Using Mistral AI API via the secure Cloud Function proxy
-    const mistralApiUrl = 'https://api.mistral.ai/v1/chat/completions';
-
-    const response = await axios.post(
-      mistralApiUrl,
-      {
-        model: 'mistral-small',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 2000,
+    const response = await axios.post('https://api.mistral.ai/v1/chat/completions', {
+      model: 'mistral-small-latest',
+      messages,
+      temperature: 0.7,
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
       },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${functions.config().mistral.api_key}`,
-        },
-      }
-    );
-
-    const aiResponse = response.data.choices[0].message.content;
-
-    // Save AI response to the user's message subcollection
-    await admin.firestore()
-      .collection('users').doc(userUid)
-      .collection('ai_tutor_messages').add({
-      'text': aiResponse,
-      'isUser': false,
-      'timestamp': admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // The function now saves the data and doesn't need to return it.
-    return { success: true, message: "AI response saved." };
+    const aiResponse = response.data?.choices?.[0]?.message?.content || 'I’m sorry, I couldn’t generate a response right now.';
+
+    await admin.firestore().collection('users').doc(userUid).collection('ai_tutor_messages').add({
+      text: aiResponse,
+      isUser: false,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      success: true,
+    };
   } catch (error) {
     console.error('AI API Error:', error);
-    throw new functions.https.HttpsError(
-      'internal',
-      'Failed to get AI response'
-    );
+    throw new functions.https.HttpsError('internal', 'Failed to get AI response');
   }
 });
 

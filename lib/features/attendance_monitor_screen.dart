@@ -8,12 +8,14 @@ class LecturerAttendanceScreen extends StatefulWidget {
   final String sessionId;
   final String courseName;
   final String lectureTitle;
+  final VoidCallback? onSessionEnded;
 
   const LecturerAttendanceScreen({
     super.key,
     required this.sessionId,
     required this.courseName,
     required this.lectureTitle,
+    this.onSessionEnded,
   });
 
   @override
@@ -85,7 +87,10 @@ class _LecturerAttendanceScreenState extends State<LecturerAttendanceScreen> {
 
       await _generateAndDownloadPDF();
 
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+        widget.onSessionEnded?.call();
+      }
     }
   }
 

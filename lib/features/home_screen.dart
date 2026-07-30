@@ -8,10 +8,7 @@ import 'lecturer_home.dart' as lecturer;
 
 // In home_screen.dart, update the build method to pass toggleTheme to student/tutor homes
 class HomeScreen extends StatelessWidget {
-  final VoidCallback toggleTheme;
-  final bool isDarkMode;
-
-  const HomeScreen({super.key, required this.toggleTheme, required this.isDarkMode});
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -19,9 +16,9 @@ class HomeScreen extends StatelessWidget {
     final userRole = auth.currentUser?.role ?? '';
 
     if (userRole == 'student') {
-      return StudentHome(toggleTheme: toggleTheme, isDarkMode: isDarkMode);
+      return const StudentHome();
     } else {
-      return lecturer.LecturerHome(toggleTheme: toggleTheme, isDarkMode: isDarkMode);
+      return const lecturer.LecturerHome();
     }
   }
 }

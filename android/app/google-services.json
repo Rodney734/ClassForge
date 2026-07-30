@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "1083556222049",
+    "firebase_url": "https://classforge-app-default-rtdb.firebaseio.com",
     "project_id": "classforge-app",
     "storage_bucket": "classforge-app.firebasestorage.app"
   },

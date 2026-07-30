@@ -1,101 +1,163 @@
+import 'dart:convert';
+
+import 'package:classforge/models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+class AiCallableException implements Exception {
+  final String code;
+  final String message;
+
+  const AiCallableException({required this.code, required this.message});
+}
 
 class AITutorService {
+  static const String _functionsRegion = 'us-central1';
+  static const String _functionsEmulatorHost = '127.0.0.1';
+  static const int _functionsEmulatorPort = 5001;
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
+    region: _functionsRegion,
+  );
 
-  // System prompt
-  static const String SYSTEM_PROMPT = '''
-You are ClassForge AI, an educational tutor for university students.
+  bool get _useFunctionsEmulator =>
+      kDebugMode && defaultTargetPlatform == TargetPlatform.windows;
 
-Your purpose is to help students learn academic subjects including:
-- Programming (Flutter, Dart, Python, Java, C++, JavaScript, etc.)
-- Databases (SQL, MongoDB, Firebase)
-- Artificial Intelligence, Machine Learning
-- Networking, Cybersecurity, Software Engineering
-- Mathematics, Physics, Chemistry, Biology
-- Business Studies, Accounting, Economics
-- Any other academic discipline
+  Future<Map<String, dynamic>> _callFunction(
+    String name,
+    Map<String, dynamic> data,
+  ) async {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return _callWindowsFunction(name, data);
+    }
 
-BEHAVIOR GUIDELINES:
-1. Be patient, encouraging, and professional like a good teacher
-2. Explain concepts step by step with clear examples
-3. Ask guiding questions to encourage critical thinking
-4. Give hints instead of immediately revealing answers
-5. Adapt explanations based on the student's level
-6. When appropriate, generate practice questions or mini-quizzes
+    final callable = _functions.httpsCallable(name);
+    final result = await callable.call<Map<String, dynamic>>(data);
+    return Map<String, dynamic>.from(result.data);
+  }
 
-RESPONSE FORMAT:
-- Keep responses clear and well-structured
-- Use bullet points for lists
-- Provide examples where helpful
-- For complex topics, break down into smaller parts
+  Future<Map<String, dynamic>> _callWindowsFunction(
+    String name,
+    Map<String, dynamic> data,
+  ) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final idToken = await user?.getIdToken();
+    if (idToken == null) {
+      throw const AiCallableException(
+        code: 'unauthenticated',
+        message: 'Please sign in again to use the AI tutor.',
+      );
+    }
 
-OUT OF SCOPE - Politely decline:
-- Dating advice, relationships, therapy, mental health counselling
-- Politics, gossip, celebrity news, entertainment
-- Illegal activities, non-educational conversations
+    final projectId = Firebase.app().options.projectId;
+    final uri = _useFunctionsEmulator
+        ? Uri.http(
+            '$_functionsEmulatorHost:$_functionsEmulatorPort',
+            '/$projectId/$_functionsRegion/$name',
+          )
+        : Uri.https('$_functionsRegion-$projectId.cloudfunctions.net', name);
 
-Redirect with: "I'm ClassForge AI. My purpose is to help students with educational and academic learning. Please ask me a question related to your studies."
-''';
+    late final http.Response response;
+    try {
+      response = await http.post(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $idToken',
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: jsonEncode({'data': data}),
+      );
+    } on http.ClientException {
+      if (_useFunctionsEmulator) {
+        throw const AiCallableException(
+          code: 'unavailable',
+          message:
+              'The local Firebase Functions emulator is not running. Start it with `firebase emulators:start --only functions --project classforge-app`.',
+        );
+      }
+      rethrow;
+    }
 
-  // Send a message to Mistral AI
+    final contentType = response.headers['content-type']?.toLowerCase() ?? '';
+    if (!contentType.contains('application/json')) {
+      if (response.statusCode == 404) {
+        throw AiCallableException(
+          code: 'not-found',
+          message: _useFunctionsEmulator
+              ? 'The local Firebase Functions emulator did not register `$name`. Check its startup logs.'
+              : 'The AI function is not deployed in $_functionsRegion for project $projectId.',
+        );
+      }
+
+      throw AiCallableException(
+        code: response.statusCode.toString(),
+        message:
+            'The AI service returned a non-JSON response (HTTP ${response.statusCode}).',
+      );
+    }
+
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } on FormatException {
+      throw AiCallableException(
+        code: 'invalid-response',
+        message:
+            'The AI service returned invalid JSON (HTTP ${response.statusCode}).',
+      );
+    }
+    if (decoded is! Map) {
+      throw const AiCallableException(
+        code: 'internal',
+        message: 'The AI service returned an invalid response.',
+      );
+    }
+
+    final error = decoded['error'];
+    if (error is Map) {
+      throw AiCallableException(
+        code: error['status']?.toString() ?? 'unknown',
+        message: error['message']?.toString() ?? 'The AI request failed.',
+      );
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AiCallableException(
+        code: response.statusCode.toString(),
+        message: 'The AI service returned HTTP ${response.statusCode}.',
+      );
+    }
+
+    final result = decoded['result'] ?? decoded['response'] ?? decoded['data'];
+    if (result is! Map) {
+      throw const AiCallableException(
+        code: 'internal',
+        message: 'The AI service returned an invalid response.',
+      );
+    }
+    return Map<String, dynamic>.from(result);
+  }
+
+  // Send a message to the secure backend.
   Future<void> sendMessage({
     required String message,
     required String userId,
   }) async {
-    // Save the user's message to Firestore first for a responsive UI.
-    await _saveMessage(userId: userId, text: message, isUser: true);
+    final userSnapshot = await _firestore.collection('users').doc(userId).get();
+    final user = AppUser.fromMap(userSnapshot.data()!);
 
-    try {
-      // Get user level to pass to the function
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      final userLevel = userDoc.data()?['level'] ?? 1;
-
-      // Call the Cloud Function. It will handle the AI API call and save the response.
-      final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable(
-        'aiTutor',
-      );
-      await callable.call({
-        'message': message,
-        'userId': userId,
-        'level': userLevel,
-      });
-    } on FirebaseFunctionsException catch (e) {
-      // If the function fails, save an error message to the chat UI.
-      await _saveMessage(
-        userId: userId,
-        text: 'Error: ${e.message}',
-        isUser: false,
-      );
-    } catch (e) {
-      // Handle other potential errors.
-      await _saveMessage(
-        userId: userId,
-        text: 'An unexpected error occurred: $e',
-        isUser: false,
-      );
-    }
+    await _callFunction('aiTutor', {
+      'message': message,
+      'userId': userId,
+      'level': user.level,
+    });
   }
 
-  // Save message to Firestore
-  Future<void> _saveMessage({
-    required String userId,
-    required String text,
-    required bool isUser,
-  }) async {
-    await _firestore
-        .collection('users')
-        .doc(userId)
-        .collection('ai_tutor_messages')
-        .add({
-          'text': text,
-          'isUser': isUser,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-  }
-
-  // Get chat stream for a user
   Stream<QuerySnapshot> getChatStream(String userId) {
     return _firestore
         .collection('users')

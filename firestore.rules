@@ -7,19 +7,97 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isStudent() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+
     function isLecturer() {
-      return request.auth != null && 
+      return request.auth != null &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'lecturer';
     }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isEnrolledInCourse(courseId) {
+      return exists(
+        /databases/$(database)/documents/student_enrollments/$(courseId + '_' + request.auth.uid)
+      );
+    }
+
+    function isAssignedToCourse(courseId) {
+      return exists(
+        /databases/$(database)/documents/lecturer_assignments/$(courseId + '_' + request.auth.uid)
+      );
+    }
+
+    // ==================== ACADEMIC STRUCTURE ====================
+
+    // Public catalog reads support the unauthenticated registration flow.
+    match /academic_years/{yearId} {
+      allow read: if true;
+      allow write: if false; // Admin only (use Firebase console)
+    }
+
+    match /academic_fields/{fieldId} {
+      allow read: if true;
+      allow write: if false; // Admin only (use Firebase console)
+    }
+
+    match /programmes/{programmeId} {
+      allow read: if true;
+      allow write: if false; // Admin only
+    }
+
+    match /bachelors/{bachelorId} {
+      allow read: if true;
+      allow write: if false; // Admin only
+    }
+
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if false; // Admin only
+    }
+
+    // ==================== STUDENT/LECTURER ASSIGNMENTS ====================
+
+    // Student Enrollments (students can read their own, lecturers can read for their courses)
+    match /student_enrollments/{enrollmentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid ||
+        isAssignedToCourse(resource.data.courseId)
+      );
+      allow create: if isStudent() &&
+        request.resource.data.studentId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.studentId == request.auth.uid &&
+        request.writeFields.hasOnly(['status']);
+      allow delete: if false;
+    }
+
+    // Lecturer Assignments (lecturers can read their own, admins manage)
+    match /lecturer_assignments/{assignmentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.lecturerId == request.auth.uid
+      );
+      allow create: if isLecturer() &&
+        request.resource.data.lecturerId == request.auth.uid;
+      allow update: if isAuthenticated() &&
+        resource.data.lecturerId == request.auth.uid &&
+        request.writeFields.hasOnly(['status']);
+      allow delete: if false;
+    }
+
+    // ==================== EXISTING COLLECTIONS (UPDATED) ====================
 
     // Users - SINGLE DEFINITION
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create: if isAuthenticated();
-      allow delete: if request.auth.uid == userId; // A user can delete their own account
-      // A user can update their own profile picture, name, or bio.
-      allow update: if request.auth.uid == userId && request.writeFields.hasAny(['profilePicture', 'fullName', 'bio', 'backgroundImage', 'removeBackgroundImage']);
-      // Anyone can update ONLY the streak field.
+      allow delete: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId && request.writeFields.hasAny(['profilePicture', 'fullName', 'bio', 'activeModuleId', 'activeModuleName', 'activeCourseId', 'activeCourseName']);
       allow update: if request.auth != null && request.writeFields.hasOnly(['streak']);
 
       // ============================================
@@ -47,6 +125,17 @@ service cloud.firestore {
       allow write: if isLecturer();
     }
 
+    // Attendance sessions created by lecturers and visible to authenticated users.
+    match /attendance_sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isLecturer() &&
+        request.resource.data.lecturerId == request.auth.uid;
+      allow update: if isLecturer() &&
+        resource.data.lecturerId == request.auth.uid &&
+        request.resource.data.lecturerId == request.auth.uid;
+      allow delete: if false;
+    }
+
     // Forum Questions
     match /forum_questions/{questionId} {
       allow read: if isAuthenticated();
@@ -60,22 +149,35 @@ service cloud.firestore {
       }
     }
 
-    // Attendance Sessions
-    match /attendance_sessions/{sessionId} {
+    // Active Attendance Sessions (by course and level)
+    match /active_attendance/{sessionId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isLecturer();
+      allow create, update: if isAuthenticated() && isLecturer();
+      allow delete: if false;
     }
 
-    // Attendance Records
+    // Attendance Records (students and lecturers in the course)
     match /attendance_records/{recordId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.studentId == request.auth.uid ||
+        isAssignedToCourse(resource.data.courseId) ||
+        (resource.data.sessionId != null &&
+          get(/databases/$(database)/documents/attendance_sessions/$(resource.data.sessionId)).data.lecturerId == request.auth.uid)
+      );
+      allow create: if isAuthenticated() && isStudent() &&
+        request.resource.data.studentId == request.auth.uid;
+      allow update, delete: if false;
     }
 
-    // Group Chat Messages
+    // Group Chat Messages (course-scoped)
     match /messages/{messageId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
+      // Students can only send to their courses, lecturers to their assigned courses
+      allow create: if isAuthenticated() && (
+        (isStudent() && isEnrolledInCourse(request.resource.data.courseId)) ||
+        (isLecturer() && isAssignedToCourse(request.resource.data.courseId)) ||
+        (request.resource.data.courseId == null) // Backward compatibility: level-based
+      );
       allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
       allow update: if false;
     }
@@ -90,23 +192,36 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
-    // Notices
+    // Notices (course-scoped or level-based for backward compat)
     match /notices/{noticeId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isLecturer();
-      allow delete: if isAuthenticated() && isLecturer();
+      allow create: if isAuthenticated() && isLecturer();
+      allow update, delete: if isAuthenticated() && isLecturer();
     }
 
-    // Assignments
+    // Assignments (course-scoped or level-based for backward compat)
     match /assignments/{assignmentId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && isLecturer();
+      allow update, delete: if isAuthenticated() && isLecturer();
+
+      match /submissions/{submissionId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isStudent();
+        allow update, delete: if false;
+      }
     }
 
-    // Scheduled Classes
+    // Scheduled Classes / live class state documents
     match /scheduled_classes/{classId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && isLecturer();
+      allow update: if isAuthenticated() && isLecturer();
+      // Students update only their participation and live-class content.
+      // Class ownership, status, and lecturer metadata remain lecturer-only.
+      allow update: if isAuthenticated() &&
+        request.writeFields.hasOnly(['participants', 'chatMessages', 'reactions']);
+      allow delete: if false;
     }
 
     // Live Classes

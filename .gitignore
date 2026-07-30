@@ -32,6 +32,9 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+functions/.env.local
+functions/.secret.local
+serviceAccountKey.json
 
 # Symbolication related
 app.*.symbols

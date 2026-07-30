@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final VoidCallback toggleTheme;
-  const ProfileScreen({super.key, required this.toggleTheme});
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -16,7 +15,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   bool _isUploading = false;
-  bool _isUploadingBackground = false;
   late AnimationController _animationController;
 
   @override
@@ -57,8 +55,8 @@ class _ProfileScreenState extends State<ProfileScreen>
             opacity: _animationController,
             child: Column(
               children: [
-                // Header with theme toggle
-                _buildHeader(isDarkMode, isDesktop, widget.toggleTheme),
+                // Header
+                _buildHeader(isDarkMode, isDesktop),
 
                 const SizedBox(height: 30),
 
@@ -75,11 +73,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 // Stats Section
                 _buildStatsSection(user, isDarkMode),
 
-                const SizedBox(height: 30),
-
-                // Change Background Button
-                _buildChangeBackgroundButton(isDarkMode),
-
                 // Account Actions Section
                 _buildAccountActionsSection(auth, isDarkMode),
 
@@ -92,11 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildHeader(
-    bool isDarkMode,
-    bool isDesktop,
-    VoidCallback toggleTheme,
-  ) {
+  Widget _buildHeader(bool isDarkMode, bool isDesktop) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -121,15 +110,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ],
           ),
-        ),
-        // Theme Toggle Switch
-        Switch(
-          value: isDarkMode,
-          onChanged: (value) => toggleTheme(),
-          activeTrackColor: const Color(0xFF00F5FF).withValues(alpha: 0.5),
-          activeThumbColor: const Color(0xFF00F5FF),
-          inactiveThumbColor: Colors.grey.shade400,
-          inactiveTrackColor: Colors.grey.shade200,
         ),
       ],
     );
@@ -166,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   backgroundImage:
                       user.profilePicture != null &&
                           user.profilePicture!.isNotEmpty
-                      ? MemoryImage(base64Decode(user.profilePicture!))
+                      ? NetworkImage(user.profilePicture!)
                       : null,
                   child: user.profilePicture == null && !_isUploading
                       ? Text(
@@ -340,41 +320,37 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildStatsSection(user, bool isDarkMode) {
-    // These stats would come from your backend
-    // For now, showing placeholder values
-    final stats = {'questions': 0, 'answers': 0, 'streak': 0};
-
-    return GlassmorphicContainer(
+    return Container(
+      // Using a standard container for better performance
+      // The glass effect on small, static items is expensive
       width: double.infinity,
       height: 100, // Adjusted height
-      borderRadius: 24,
-      blur: 20,
-      linearGradient: LinearGradient(
-        colors: [
-          const Color(0xFF00F5FF).withValues(alpha: 0.1),
-          const Color(0xFF00F5FF).withValues(alpha: 0.05),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      border: 1,
-      borderGradient: LinearGradient(
-        colors: [
-          const Color(0xFF00F5FF).withValues(alpha: 0.2),
-          const Color(0xFF00F5FF).withValues(alpha: 0.2),
-        ],
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF00F5FF).withValues(alpha: 0.1),
+            const Color(0xFF00F5FF).withValues(alpha: 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          width: 1,
+          color: const Color(0xFF00F5FF).withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          Expanded(
-            child: _buildStatItem(
-              stats['questions'].toString(),
-              "Questions",
-              Icons.help_outline,
-              isDarkMode,
-            ),
-          ),
+          // Expanded(
+          //   child: _buildStatItem(
+          //     stats['questions'].toString(),
+          //     "Questions",
+          //     Icons.help_outline,
+          //     isDarkMode,
+          //   ),
+          // ),
           Container(
             width: 1,
             height: 40,
@@ -382,7 +358,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           Expanded(
             child: _buildStatItem(
-              stats['answers'].toString(),
+              "0",
               "Answers",
               Icons.comment_outlined,
               isDarkMode,
@@ -395,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           Expanded(
             child: _buildStatItem(
-              stats['streak'].toString(),
+              "0",
               "Streak",
               Icons.local_fire_department,
               isDarkMode,
@@ -413,6 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     bool isDarkMode,
   ) {
     return Column(
+      // This Column is causing an overflow, needs to be wrapped or sized.
       children: [
         Icon(icon, color: const Color(0xFF00F5FF), size: 24),
         const SizedBox(height: 8),
@@ -435,90 +412,34 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildChangeBackgroundButton(bool isDarkMode) {
-    return GestureDetector(
-      onTap: _isUploadingBackground ? null : _uploadBackgroundImage,
-      child: GlassmorphicContainer(
-        width: double.infinity,
-        height: 60, // Adjusted height
-        borderRadius: 24,
-        blur: 20,
-        linearGradient: LinearGradient(
-          colors: [
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: 1,
-        borderGradient: LinearGradient(
-          colors: [
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
-          ],
-        ),
-        child: Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isUploadingBackground)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFF00F5FF),
-                    ),
-                  ),
-                )
-              else
-                const Icon(Icons.image_outlined, color: Color(0xFF00F5FF)),
-              const SizedBox(width: 12),
-              Text(
-                _isUploadingBackground
-                    ? "Uploading..."
-                    : "Change Background Image",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildAccountActionsSection(AuthService auth, bool isDarkMode) {
     return Container(
       margin: const EdgeInsets.only(top: 30),
-      child: GlassmorphicContainer(
+      child: Container(
         width: double.infinity,
-        height: 480, // Adjusted height
-        borderRadius: 24,
-        blur: 20,
-        linearGradient: LinearGradient(
-          colors: [
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        border: 1,
-        borderGradient: LinearGradient(
-          colors: [
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
-            (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.2),
-          ],
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            colors: [
+              (isDarkMode ? Colors.white : Colors.black).withValues(alpha: 0.1),
+              (isDarkMode ? Colors.white : Colors.black).withValues(
+                alpha: 0.05,
+              ),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            width: 1,
+            color: (isDarkMode ? Colors.white : Colors.black).withValues(
+              alpha: 0.2,
+            ),
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               _buildActionItem(
                 Icons.edit_outlined,
@@ -530,29 +451,14 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const Divider(height: 24),
               _buildActionItem(
-                Icons.help_outline,
-                "Help & Support",
-                "Get help or contact support",
+                Icons.settings_outlined,
+                "Settings",
+                "Appearance, account, and more",
                 isDarkMode,
                 onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Help & Support coming soon!"),
-                    ),
-                  );
-                },
-              ),
-              const Divider(height: 24),
-              _buildActionItem(
-                Icons.privacy_tip_outlined,
-                "Privacy Policy",
-                "Read our privacy policy",
-                isDarkMode,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Privacy Policy coming soon!"),
-                    ),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
                   );
                 },
               ),
@@ -564,16 +470,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 isDarkMode,
                 isDestructive: true,
                 onTap: () => _showSignOutDialog(auth),
-              ),
-              const Divider(height: 24),
-              _buildActionItem(
-                Icons.hide_image_outlined,
-                "Remove Background",
-                "Revert to the default background",
-                isDarkMode,
-                onTap: () => _showRemoveBackgroundDialog(),
-                isDestructive: true,
-                destructiveColor: Colors.orange,
               ),
             ],
           ),
@@ -669,8 +565,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       try {
         final auth = Provider.of<AuthService>(context, listen: false);
         final imageBytes = await image.readAsBytes();
-        final base64Image = base64Encode(imageBytes);
-        await auth.updateProfilePicture(base64Image);
+        await auth.updateProfilePicture(imageBytes);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -697,63 +592,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Future<void> _uploadBackgroundImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      // --- File Size Validation ---
-      final int fileSize = await image.length(); // size in bytes
-      const int maxSizeInBytes = 3 * 1024 * 1024; // 3 MB
-
-      if (fileSize > maxSizeInBytes) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Image is too large. Please select an image under 3MB.',
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return;
-      }
-
-      setState(() => _isUploadingBackground = true);
-
-      try {
-        final auth = Provider.of<AuthService>(context, listen: false);
-        final imageBytes = await image.readAsBytes();
-        final base64Image = base64Encode(imageBytes);
-        await auth.updateBackgroundImage(base64Image);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Background image updated successfully!"),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Error updating background image: $e"),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isUploadingBackground = false);
-      }
-    }
-  }
-
   void _showSignOutDialog(AuthService auth) {
     showDialog(
       context: context,
@@ -775,53 +613,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               foregroundColor: Colors.white,
             ),
             child: const Text("Sign Out"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRemoveBackgroundDialog() {
-    // Capture the context that is safe to use across async gaps.
-    final scaffoldContext = context;
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text("Remove Background"),
-        content: const Text(
-          "Are you sure you want to remove your background image?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext); // Close the dialog first
-              try {
-                final auth = Provider.of<AuthService>(
-                  scaffoldContext,
-                  listen: false,
-                );
-                await auth.updateBackgroundImage(''); // Send empty string
-                if (scaffoldContext.mounted) {
-                  ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                    const SnackBar(
-                      content: Text("Background removed successfully!"),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (scaffoldContext.mounted) {
-                  ScaffoldMessenger.of(scaffoldContext).showSnackBar(
-                    SnackBar(content: Text("Failed to remove background: $e")),
-                  );
-                }
-              }
-            },
-            child: const Text("Remove"),
           ),
         ],
       ),

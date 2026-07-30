@@ -6,7 +6,9 @@ import '../services/location_service.dart';
 import 'attendance_monitor_screen.dart';
 
 class CreateAttendanceScreen extends StatefulWidget {
-  const CreateAttendanceScreen({super.key});
+  final VoidCallback? onBack;
+
+  const CreateAttendanceScreen({super.key, this.onBack});
 
   @override
   State<CreateAttendanceScreen> createState() => _CreateAttendanceScreenState();
@@ -76,13 +78,14 @@ class _CreateAttendanceScreenState extends State<CreateAttendanceScreen> {
 
       if (mounted) {
         // Navigate to monitoring screen
-        Navigator.pushReplacement(
+        Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => LecturerAttendanceScreen(
               sessionId: docRef.id,
               courseName: _courseNameController.text.trim(),
               lectureTitle: _lectureTitleController.text.trim(),
+              onSessionEnded: widget.onBack,
             ),
           ),
         );

@@ -1,15 +1,16 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+
 import '../services/auth_service.dart';
 import '../services/student_id_service.dart';
-import '../services/ocr_service.dart';
 
 class StudentIdManagementScreen extends StatefulWidget {
   final VoidCallback? onBack;
+
   const StudentIdManagementScreen({super.key, this.onBack});
 
   @override
@@ -19,7 +20,6 @@ class StudentIdManagementScreen extends StatefulWidget {
 
 class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
   final StudentIdService _studentIdService = StudentIdService();
-  final OcrService _ocrService = OcrService();
   final TextEditingController _studentIdController = TextEditingController();
   final TextEditingController _levelController = TextEditingController();
 
@@ -30,17 +30,12 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
   void dispose() {
     _studentIdController.dispose();
     _levelController.dispose();
-    // ML Kit does not support Windows. Guarding the call to prevent MissingPluginException during screen disposal.
-    if (!kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-            defaultTargetPlatform == TargetPlatform.iOS)) {
-      _ocrService.dispose();
-    }
     super.dispose();
   }
 
   Future<void> _addStudentIdManually() async {
     if (_studentIdController.text.trim().isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a Student ID')),
       );
@@ -69,78 +64,106 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
       _studentIdController.clear();
       _levelController.clear();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Student ID added successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Student ID added successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  Future<void> _importFromImage() async {
-    // OCR features are not available on Desktop/Windows.
-    if (kIsWeb ||
-        (defaultTargetPlatform != TargetPlatform.android &&
-            defaultTargetPlatform != TargetPlatform.iOS)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Student ID scanning (OCR) is only supported on Android and iOS devices.',
-          ),
-        ),
-      );
+  Future<void> _importStudentIdDocument() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx', 'xls', 'pdf'],
+      withData: true,
+    );
+
+    if (result == null ||
+        result.files.isEmpty ||
+        result.files.single.bytes == null) {
       return;
     }
-
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image == null) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final File imageFile = File(image.path);
-      final extractedIds = await _ocrService.extractStudentIdsFromImage(
-        imageFile,
-      );
+      final file = result.files.single;
+      final extension = file.extension?.toLowerCase();
+      final bytes = file.bytes!;
 
-      setState(() {
-        _extractedIds = extractedIds;
-      });
+      final extractedIds = extension == 'pdf'
+          ? _extractIdsFromText(
+              PdfTextExtractor(PdfDocument(inputBytes: bytes)).extractText(),
+            )
+          : _extractIdsFromExcel(Excel.decodeBytes(bytes));
+
+      if (!mounted) return;
+      setState(() => _extractedIds = extractedIds);
 
       if (extractedIds.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'No student IDs found in the image. Please try again.',
+              'No student IDs found. Use a document with one ID per row or column.',
             ),
             backgroundColor: Colors.orange,
           ),
         );
-      } else {
-        _showExtractedIdsDialog();
+        return;
       }
+
+      _showExtractedIdsDialog();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('OCR Error: $e')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Document import error: $e')));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
+  }
+
+  List<String> _extractIdsFromExcel(Excel workbook) {
+    final values = <String>[];
+
+    for (final sheet in workbook.tables.values) {
+      for (final row in sheet.rows) {
+        for (final cell in row) {
+          final value = cell?.value?.toString().trim() ?? '';
+          if (value.isNotEmpty) {
+            values.add(value);
+          }
+        }
+      }
+    }
+
+    return _extractIdsFromText(values.join('\n'));
+  }
+
+  List<String> _extractIdsFromText(String text) {
+    final matches = RegExp(
+      r'\b(?:[A-Z]{2,}\d{2,}|\d{4}[-/]\d{2,}|\d{6,})\b',
+      caseSensitive: false,
+    ).allMatches(text);
+
+    return matches
+        .map((match) => match.group(0)!.toUpperCase())
+        .toSet()
+        .toList();
   }
 
   void _showExtractedIdsDialog() {
@@ -148,10 +171,10 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final selectedIds = <String, bool>{};
-          for (var id in _extractedIds) {
+          for (final id in _extractedIds) {
             selectedIds[id] = true;
           }
 
@@ -186,20 +209,20 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
                 onPressed: () async {
-                  Navigator.pop(context);
-                  setState(() => _isLoading = true);
-
                   final idsToAdd = selectedIds.entries
-                      .where((e) => e.value)
-                      .map((e) => e.key)
+                      .where((entry) => entry.value)
+                      .map((entry) => entry.key)
                       .toList();
 
-                  final List<Map<String, dynamic>> batchData = idsToAdd
+                  Navigator.pop(dialogContext);
+                  setState(() => _isLoading = true);
+
+                  final batchData = idsToAdd
                       .map(
                         (id) => {
                           'studentId': id,
@@ -214,22 +237,23 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
 
                   await _studentIdService.addMultipleStudentIds(batchData);
 
-                  setState(() => _isLoading = false);
+                  if (!mounted) return;
+                  setState(() {
+                    _isLoading = false;
+                    _extractedIds = [];
+                  });
 
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Added ${idsToAdd.length} student IDs successfully!',
-                        ),
-                        backgroundColor: Colors.green,
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Added ${idsToAdd.length} student IDs successfully!',
                       ),
-                    );
-                    setState(() => _extractedIds = []);
-                  }
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                 },
                 child: Text(
-                  'Add Selected (${selectedIds.values.where((v) => v).length})',
+                  'Add Selected (${selectedIds.values.where((value) => value).length})',
                 ),
               ),
             ],
@@ -250,18 +274,18 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
   Future<void> _deleteStudentId(String id) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Student ID?'),
         content: Text(
           'Are you sure you want to delete $id? This action cannot be undone.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Delete'),
           ),
@@ -271,12 +295,70 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
 
     if (confirm == true) {
       await _studentIdService.deleteStudentId(id);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Student ID deleted')));
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Student ID deleted')));
     }
+  }
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('How to Use Student ID Management'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHelpItem(
+                'Manual Entry',
+                'Type individual student IDs and level. Click Add to save.',
+                Icons.edit_note,
+              ),
+              const SizedBox(height: 16),
+              _buildHelpItem(
+                'Document Import',
+                'Upload an Excel spreadsheet or PDF containing student IDs and review the extracted values before saving.',
+                Icons.upload_file,
+              ),
+              const SizedBox(height: 16),
+              _buildHelpItem(
+                'Student ID Format',
+                'Supported formats: 2024-001, STU001, or any 6-10 digit number.',
+                Icons.info_outline,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItem(String title, String description, IconData icon) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.redAccent),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(description, style: const TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -292,7 +374,7 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: const NetworkImage(
-              "https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600",
+              'https://images.pexels.com/photos/256468/pexels-photo-256468.jpeg?auto=compress&cs=tinysrgb&w=1600',
             ),
             fit: BoxFit.cover,
             colorFilter: ColorFilter.mode(
@@ -327,19 +409,12 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header Section
                         _buildHeader(isDarkMode),
                         const SizedBox(height: 24),
-
-                        // Manual Entry Card
-                        _buildManualEntryCard(isDarkMode, isDesktop),
+                        _buildManualEntryCard(isDarkMode),
                         const SizedBox(height: 24),
-
-                        // OCR Import Card
-                        _buildOcrImportCard(isDarkMode),
+                        _buildDocumentImportCard(isDarkMode),
                         const SizedBox(height: 24),
-
-                        // Student IDs List
                         _buildStudentIdsList(isDarkMode, user),
                       ],
                     ),
@@ -405,14 +480,14 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.help_outline, color: Colors.redAccent),
-            onPressed: () => _showHelpDialog(),
+            onPressed: _showHelpDialog,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildManualEntryCard(bool isDarkMode, bool isDesktop) {
+  Widget _buildManualEntryCard(bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -430,7 +505,7 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.edit_note, color: Colors.redAccent),
+              const Icon(Icons.edit_note, color: Colors.redAccent),
               const SizedBox(width: 8),
               const Text(
                 'Manual Entry',
@@ -485,7 +560,7 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
     );
   }
 
-  Widget _buildOcrImportCard(bool isDarkMode) {
+  Widget _buildDocumentImportCard(bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -503,59 +578,39 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.document_scanner, color: Colors.redAccent),
+              const Icon(Icons.upload_file, color: Colors.redAccent),
               const SizedBox(width: 8),
               const Text(
-                'Import from Image (OCR)',
+                'Import Student IDs from Document',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
-            'Upload a photo or screenshot of a class list containing student IDs. '
-            'The system will automatically extract and detect IDs.',
+            'Import an Excel spreadsheet or PDF class list. Student IDs will be extracted for review before they are saved.',
             style: TextStyle(
               fontSize: 12,
               color: isDarkMode ? Colors.white70 : Colors.black54,
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _importFromImage,
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Import from Gallery'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _importFromImage,
-                  icon: const Icon(Icons.camera_alt),
-                  label: const Text('Take a Photo'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ],
+          OutlinedButton.icon(
+            onPressed: _importStudentIdDocument,
+            icon: const Icon(Icons.file_open),
+            label: const Text('Choose Excel or PDF'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.redAccent,
+              side: const BorderSide(color: Colors.redAccent),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStudentIdsList(bool isDarkMode, user) {
+  Widget _buildStudentIdsList(bool isDarkMode, dynamic user) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -573,7 +628,7 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.list_alt, color: Colors.redAccent),
+              const Icon(Icons.list_alt, color: Colors.redAccent),
               const SizedBox(width: 8),
               const Text(
                 'Registered Student IDs',
@@ -593,7 +648,11 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
                 return Center(
                   child: Column(
                     children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                      const Icon(
+                        Icons.people_outline,
+                        size: 64,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'No student IDs added yet',
@@ -603,7 +662,7 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Add student IDs using manual entry or OCR import',
+                        'Add student IDs manually or import an Excel/PDF document',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     ],
@@ -621,7 +680,6 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
 
               return Column(
                 children: [
-                  // Stats
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -681,7 +739,6 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // List
                   ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -752,65 +809,6 @@ class _StudentIdManagementScreenState extends State<StudentIdManagementScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('How to Use Student ID Management'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildHelpItem(
-                'Manual Entry',
-                'Type individual student IDs and level. Click Add to save.',
-                Icons.edit_note,
-              ),
-              const SizedBox(height: 16),
-              _buildHelpItem(
-                'OCR Import',
-                'Upload an image containing student IDs. The system will automatically detect and extract them.',
-                Icons.document_scanner,
-              ),
-              const SizedBox(height: 16),
-              _buildHelpItem(
-                'Student ID Format',
-                'Supported formats: 2024-001, STU001, or any 6-10 digit number',
-                Icons.info_outline,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHelpItem(String title, String description, IconData icon) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: Colors.redAccent),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(description, style: const TextStyle(fontSize: 12)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

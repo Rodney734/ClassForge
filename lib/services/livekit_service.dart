@@ -39,6 +39,12 @@ class LiveKitService {
           'roomJoin': true,
           'canPublish':
               true, // Set to true to allow participants to share video/audio
+          'canPublishSources': [
+            'camera',
+            'microphone',
+            'screen_share',
+            'screen_share_audio',
+          ],
           'canSubscribe':
               true, // Set to true to allow participants to see others
         },

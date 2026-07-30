@@ -156,7 +156,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth > 800;
     final isStudent = user?.role.toLowerCase() == 'student';
-    final tabCount = isStudent ? 3 : 2;
+    final tabCount = isStudent ? 3 : 1;
 
     return DefaultTabController(
       length: tabCount,
@@ -212,7 +212,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ),
                   indicatorSize: TabBarIndicatorSize.tab,
                   tabs: [
-                    const Tab(text: "AI Quiz", icon: Icon(Icons.auto_awesome)),
+                    if (isStudent)
+                      const Tab(
+                        text: "AI Quiz",
+                        icon: Icon(Icons.auto_awesome),
+                      ),
                     if (isStudent)
                       const Tab(
                         text: "Q&A Forum",
@@ -227,13 +231,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               Expanded(
                 child: TabBarView(
                   children: [
-                    // AI Quiz Tab
-                    _buildAIQuizTab(isDarkMode, isDesktop, user),
+                    if (isStudent) _buildAIQuizTab(isDarkMode, isDesktop, user),
 
-                    // Q&A Forum Tab
                     if (isStudent) _buildQandATab(isDarkMode, isDesktop, user),
 
-                    // Help Guide Tab
                     _buildHelpGuideTab(isDarkMode, isDesktop),
                   ],
                 ),
@@ -880,7 +881,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  "Need more help? Contact your lecturer or rodenybowa11.com",
+                  "Need more help? Contact your lecturer or rodenybowa11@gmail.com",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12),
                 ),

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/assignment_repository.dart';
 import '../services/auth_service.dart';
 
 class AssignmentsScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class AssignmentsScreen extends StatefulWidget {
 class _AssignmentsScreenState extends State<AssignmentsScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  final AssignmentRepository _assignmentRepository = AssignmentRepository();
 
   @override
   void initState() {
@@ -166,14 +168,11 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
     if (user == null) return const SizedBox();
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('assignments')
-          .where('level', isEqualTo: user.level)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _assignmentRepository.getAssignmentsForLevel(user.level),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00F5FF)),
@@ -200,7 +199,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
           );
         }
 
-        final assignments = snapshot.data?.docs ?? [];
+        final assignments = snapshot.data ?? [];
 
         if (assignments.isEmpty) {
           return _buildEmptyState(isDarkMode, isStudent: true);
@@ -210,8 +209,8 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           itemCount: assignments.length,
           itemBuilder: (context, index) {
-            final doc = assignments[index];
-            final data = doc.data() as Map<String, dynamic>;
+            final data = assignments[index];
+            final docId = data['id']?.toString() ?? index.toString();
             return FadeTransition(
               opacity: _animationController,
               child: SlideTransition(
@@ -229,7 +228,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                         ),
                       ),
                     ),
-                child: _buildStudentAssignmentCard(data, doc.id, isDarkMode),
+                child: _buildStudentAssignmentCard(data, docId, isDarkMode),
               ),
             );
           },
@@ -242,14 +241,11 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
     if (user == null) return const SizedBox();
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('assignments')
-          .where('lecturerId', isEqualTo: user.uid)
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _assignmentRepository.getAssignmentsForLecturer(user.uid),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Center(
             child: CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00F5FF)),
@@ -276,7 +272,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
           );
         }
 
-        final assignments = snapshot.data?.docs ?? [];
+        final assignments = snapshot.data ?? [];
 
         if (assignments.isEmpty) {
           return _buildEmptyState(isDarkMode, isStudent: false);
@@ -286,8 +282,8 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           itemCount: assignments.length,
           itemBuilder: (context, index) {
-            final doc = assignments[index];
-            final data = doc.data() as Map<String, dynamic>;
+            final data = assignments[index];
+            final docId = data['id']?.toString() ?? index.toString();
             return FadeTransition(
               opacity: _animationController,
               child: SlideTransition(
@@ -305,7 +301,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
                         ),
                       ),
                     ),
-                child: _buildLecturerAssignmentCard(data, doc.id, isDarkMode),
+                child: _buildLecturerAssignmentCard(data, docId, isDarkMode),
               ),
             );
           },
@@ -876,7 +872,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
         throw Exception("User not logged in");
       }
 
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx'],
         withData: true,
@@ -1400,7 +1396,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen>
     final user = Provider.of<AuthService>(context, listen: false).currentUser;
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'doc', 'docx'],
         withData: true,

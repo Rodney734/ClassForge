@@ -10,6 +10,8 @@ import 'dart:math' as math;
 class AttendanceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // ==================== DEPRECATED: Level-based methods (kept for backward compatibility) ====================
+
   // Lecturer activates attendance for a class
   Future<void> activateAttendance({
     required String classId,
@@ -132,6 +134,157 @@ class AttendanceService {
         .get();
 
     return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  // ==================== NEW: Course-based attendance methods ====================
+
+  /// Lecturer activates attendance for a course
+  Future<void> activateAttendanceForCourse({
+    required String courseId,
+    required String courseName,
+    required String lecturerId,
+    required String lecturerName,
+    required String academicYearId,
+    required String academicFieldId,
+    required String bachelorId,
+    required Position lecturerLocation,
+    required Duration duration,
+  }) async {
+    final expiryTime = DateTime.now().add(duration);
+    final sessionId = _firestore.collection('active_attendance').doc().id;
+
+    await _firestore.collection('active_attendance').doc(sessionId).set({
+      'sessionId': sessionId,
+      'courseId': courseId,
+      'courseName': courseName,
+      'lecturerId': lecturerId,
+      'lecturerName': lecturerName,
+      'academicYearId': academicYearId,
+      'academicFieldId': academicFieldId,
+      'bachelorId': bachelorId,
+      'isActive': true,
+      'lecturerLatitude': lecturerLocation.latitude,
+      'lecturerLongitude': lecturerLocation.longitude,
+      'radius': 100, // 100 meters radius
+      'startedAt': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(expiryTime),
+      'studentsPresent': [],
+      'studentsAbsent': [],
+    });
+  }
+
+  /// Deactivate course attendance
+  Future<void> deactivateCourseAttendance(String sessionId) async {
+    await _firestore.collection('active_attendance').doc(sessionId).update({
+      'isActive': false,
+      'endedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Student marks attendance for course
+  Future<bool> markCourseAttendance({
+    required String sessionId,
+    required String courseId,
+    required String studentId,
+    required String studentName,
+    required Position studentLocation,
+    required double lecturerLat,
+    required double lecturerLng,
+    required double radius,
+  }) async {
+    // Calculate distance between lecturer and student
+    final distance = _calculateDistance(
+      lecturerLat,
+      lecturerLng,
+      studentLocation.latitude,
+      studentLocation.longitude,
+    );
+
+    final isWithinRadius = distance <= radius;
+    final status = isWithinRadius ? 'present' : 'absent';
+
+    // Record attendance
+    final attendanceRef = _firestore.collection('attendance_records').doc();
+    await attendanceRef.set({
+      'sessionId': sessionId,
+      'courseId': courseId,
+      'studentId': studentId,
+      'studentName': studentName,
+      'status': status,
+      'distance': distance,
+      'studentLatitude': studentLocation.latitude,
+      'studentLongitude': studentLocation.longitude,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    // Update active attendance session
+    final activeSession = await _firestore
+        .collection('active_attendance')
+        .doc(sessionId)
+        .get();
+
+    if (activeSession.exists) {
+      final data = activeSession.data();
+      final studentsPresent = List<String>.from(data?['studentsPresent'] ?? []);
+      final studentsAbsent = List<String>.from(data?['studentsAbsent'] ?? []);
+
+      if (status == 'present' && !studentsPresent.contains(studentId)) {
+        studentsPresent.add(studentId);
+      } else if (status == 'absent' && !studentsAbsent.contains(studentId)) {
+        studentsAbsent.add(studentId);
+      }
+
+      await _firestore.collection('active_attendance').doc(sessionId).update({
+        'studentsPresent': studentsPresent,
+        'studentsAbsent': studentsAbsent,
+      });
+    }
+
+    return isWithinRadius;
+  }
+
+  /// Get active attendance sessions for a course
+  Stream<QuerySnapshot> getActiveAttendanceByCourse(String courseId) {
+    return _firestore
+        .collection('active_attendance')
+        .where('courseId', isEqualTo: courseId)
+        .where('isActive', isEqualTo: true)
+        .snapshots();
+  }
+
+  /// Get attendance records for a course
+  Future<List<Map<String, dynamic>>> getCourseAttendanceRecords(
+    String courseId,
+  ) async {
+    final snapshot = await _firestore
+        .collection('attendance_records')
+        .where('courseId', isEqualTo: courseId)
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  /// Get attendance records for a specific session
+  Future<List<Map<String, dynamic>>> getSessionAttendanceRecords(
+    String sessionId,
+  ) async {
+    final snapshot = await _firestore
+        .collection('attendance_records')
+        .where('sessionId', isEqualTo: sessionId)
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
+
+  /// Get all active attendance sessions for a lecturer in their courses
+  Stream<QuerySnapshot> getLecturerActiveCoursesSessions(String lecturerId) {
+    return _firestore
+        .collection('active_attendance')
+        .where('lecturerId', isEqualTo: lecturerId)
+        .where('isActive', isEqualTo: true)
+        .snapshots();
   }
 
   // Generate PDF Report
