@@ -47,7 +47,7 @@ class AITutorService {
   ) async {
     final user = FirebaseAuth.instance.currentUser;
     final idToken = await user?.getIdToken();
-    if (idToken == null) {
+    if (user == null || idToken == null) {
       throw const AiCallableException(
         code: 'unauthenticated',
         message: 'Please sign in again to use the AI tutor.',
